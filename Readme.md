@@ -24,11 +24,17 @@ Fin-Data-Maker 是一个专为金融行业设计的测试数据生成系统。�
 - **引用完整性规则**：外键引用验证
 
 ### 3. 预定义金融实体
+**基础实体**:
 - 客户信息（Customer）
 - 账户信息（Account）
 - 交易流水（Transaction）
 - 贷款信息（Loan）
 - 信用卡信息（Credit Card）
+
+**新增实体** 🆕:
+- **债券信息（Bond）** - 支持8种债券类型，15个字段
+- **基金信息（Fund）** - 支持9种基金类型，17个字段
+- **衍生品信息（Derivative）** - 支持6种衍生品类型，18个字段
 
 ### 4. 多格式导出
 - CSV格式（支持UTF-8 BOM，Excel兼容）
@@ -42,13 +48,47 @@ Fin-Data-Maker 是一个专为金融行业设计的测试数据生成系统。�
 
 ## 快速开始
 
-### 安装依赖
+### 方式一：使用Docker（推荐）🐳
+
+最快速的方式是使用Docker Compose启动MySQL测试环境：
+
+```bash
+# 启动MySQL + Adminer
+docker-compose up -d
+
+# 访问Adminer Web管理界面
+# http://localhost:8080
+# 服务器: mysql, 用户: root, 密码: findata123
+```
+
+SQL脚本会自动导入，立即可用！详见 [Docker使用指南](docker/README.md)
+
+### 方式二：使用SQL脚本
+
+如果已有MySQL数据库，可以直接导入SQL脚本：
+
+```bash
+# 创建数据库
+mysql -u root -p -e "CREATE DATABASE fin_data_maker CHARACTER SET utf8mb4;"
+
+# 导入表结构和测试数据
+mysql -u root -p fin_data_maker < sql/full_setup.sql
+
+# 验证数据
+mysql -u root -p fin_data_maker -e "SELECT COUNT(*) FROM bond;"
+```
+
+详见 [SQL脚本使用说明](sql/README.md)
+
+### 方式三：使用Python生成数据
+
+#### 安装依赖
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 基础使用示例
+#### 基础使用示例
 
 ```python
 from src.core.app import DataMakerApp
@@ -82,8 +122,14 @@ account_data, _ = app.generate_with_relations(
 # 基础示例：生成客户、账户、交易数据
 python examples/basic_example.py
 
+# 新增实体示例：生成债券、基金、衍生品数据 🆕
+python examples/new_entities_example.py
+
 # 自定义表示例：创建保险单数据
 python examples/custom_table_example.py
+
+# 生成SQL INSERT语句 🆕
+python tools/generate_sql_inserts.py
 ```
 
 ## 项目结构
@@ -104,18 +150,29 @@ Fin-Data-Maker/
 │   │   ├── field_generator.py   # 字段生成器
 │   │   └── table_generator.py   # 表生成器
 │   ├── financial/         # 金融业务模块
-│   │   └── schemas.py     # 预定义金融实体
+│   │   └── schemas.py     # 预定义金融实体（8个表）
 │   ├── validators/        # 数据验证模块
 │   │   └── data_validator.py   # 数据验证器
 │   ├── output/            # 数据输出模块
 │   │   └── exporter.py    # 数据导出器
 │   └── core/              # 核心应用模块
 │       └── app.py         # 主应用类
+├── sql/                   # SQL脚本 🆕
+│   ├── schema.sql         # 数据库表结构定义
+│   ├── test_data.sql      # 测试数据
+│   ├── full_setup.sql     # 完整安装脚本
+│   └── README.md          # SQL使用说明
+├── docker/                # Docker配置 🆕
+│   └── README.md          # Docker使用指南
+├── tools/                 # 工具脚本 🆕
+│   └── generate_sql_inserts.py  # Python数据转SQL工具
 ├── examples/              # 示例代码
 │   ├── basic_example.py   # 基础示例
+│   ├── new_entities_example.py  # 新实体示例 🆕
 │   └── custom_table_example.py  # 自定义表示例
 ├── tests/                 # 单元测试
 ├── output/                # 输出目录
+├── docker-compose.yml     # Docker Compose配置 🆕
 ├── requirements.txt       # 项目依赖
 └── setup.py              # 安装配置
 ```
@@ -266,7 +323,14 @@ class CustomRule(Rule):
 
 ## 开发计划
 
-- [ ] 支持更多金融实体（债券、基金、衍生品等）
+- [x] ~~支持更多金融实体（债券、基金、衍生品等）~~ ✅ **已完成**
+  - ✅ 债券信息表（8种类型，15个字段）
+  - ✅ 基金信息表（9种类型，17个字段）
+  - ✅ 衍生品信息表（6种类型，18个字段）
+- [x] ~~提供SQL脚本和Docker支持~~ ✅ **已完成**
+  - ✅ 完整的SQL DDL和测试数据
+  - ✅ Docker Compose一键启动
+  - ✅ Python数据转SQL工具
 - [ ] 增加数据关系图可视化
 - [ ] 支持从SQL DDL导入元数据
 - [ ] 提供Web界面
