@@ -46,6 +46,26 @@ Fin-Data-Maker 是一个专为金融行业设计的测试数据生成系统。�
 - 自动处理外键引用
 - 保证数据一致性
 
+### 6. 数据源连接
+- 支持多种数据库（MySQL、PostgreSQL、Oracle、SQL Server、SQLite）
+- 自动提取表结构和元数据
+- 数据质量分析和profiling
+- 根据现有数据特征生成测试数据
+
+### 7. Web界面（NEW!）
+- 现代化的图形用户界面
+- 4步向导式操作流程
+- 实时数据预览和质量报告
+- 无需编程即可使用所有功能
+
+### 8. 高级功能（专业版）
+- **用户认证系统**：安全的用户注册、登录和会话管理
+- **配置保存**：保存和重用数据生成配置
+- **历史记录**：完整的操作历史追踪和统计分析
+- **批量处理**：同时处理多个表（计划中）
+- **可视化图表**：数据质量可视化展示（计划中）
+- **定时任务**：自动化数据生成调度（计划中）
+
 ## 快速开始
 
 ### 方式一：使用Docker（推荐）🐳
@@ -119,6 +139,15 @@ account_data, _ = app.generate_with_relations(
 ### 运行示例
 
 ```bash
+# Web界面基础版（推荐）
+python webapp.py
+
+# Web界面专业版（带认证和高级功能）
+python webapp_pro.py
+
+# 交互式命令行工具
+python cli.py --interactive
+
 # 基础示例：生成客户、账户、交易数据
 python examples/basic_example.py
 
@@ -239,6 +268,106 @@ data, report = app.generate_data("my_table", count=1000)
 app.export_data(data, "output/my_data.csv", format='csv')
 ```
 
+## 从数据源连接生成数据
+
+系统支持直接连接数据库，自动提取表结构、分析数据质量并生成符合特征的测试数据。
+
+### 1. 连接数据库
+
+```python
+from src.datasource.db_connector import DatabaseConnector, DatabaseType
+
+# 连接MySQL
+connector = DatabaseConnector(
+    db_type=DatabaseType.MYSQL,
+    host='localhost',
+    port=3306,
+    database='your_database',
+    username='your_username',
+    password='your_password'
+)
+
+connector.connect()
+```
+
+### 2. 提取表结构
+
+```python
+from src.datasource.metadata_extractor import MetadataExtractor
+
+# 创建元数据提取器
+extractor = MetadataExtractor(connector)
+
+# 提取单个表
+table = extractor.extract_table('customer')
+
+# 或提取所有表
+tables = extractor.extract_all_tables()
+```
+
+### 3. 分析数据质量
+
+```python
+from src.datasource.data_profiler import DataProfiler
+
+# 创建数据分析器
+profiler = DataProfiler(connector)
+
+# 分析表数据质量
+profiles = profiler.profile_table(table, sample_size=1000)
+
+# 生成分析报告
+report = profiler.generate_profile_report('customer', profiles)
+print(report)
+
+# 根据分析结果更新表定义
+table = profiler.update_table_metadata(table, profiles)
+
+# 生成质量规则建议
+rules = profiler.generate_quality_rules(table, profiles, strictness='medium')
+```
+
+### 4. 生成测试数据
+
+```python
+from src.core.app import DataMakerApp
+
+# 创建应用并生成数据
+app = DataMakerApp(seed=42)
+app.add_table(table)
+
+# 生成符合数据质量要求的测试数据
+data, validation_report = app.generate_data('customer', count=1000)
+
+# 导出数据
+app.export_data(data, 'output/customer_test.csv', format='csv')
+```
+
+### 5. 使用交互式命令行工具
+
+最简单的方式是使用交互式命令行工具：
+
+```bash
+python cli.py --interactive
+```
+
+工具会引导您完成以下步骤：
+1. 选择数据库类型并输入连接信息
+2. 列出并选择要处理的表
+3. 可选：分析现有数据质量
+4. 设置生成参数（行数、验证、输出格式等）
+5. 生成并导出测试数据
+
+### 支持的数据库
+
+| 数据库 | 类型标识 | 默认端口 |
+|--------|----------|----------|
+| MySQL | mysql | 3306 |
+| PostgreSQL | postgresql | 5432 |
+| Oracle | oracle | 1521 |
+| SQL Server | sqlserver | 1433 |
+| SQLite | sqlite | - |
+
 ## 支持的字段类型
 
 | 类型 | 说明 | 示例 |
@@ -333,10 +462,11 @@ class CustomRule(Rule):
   - ✅ Python数据转SQL工具
 - [ ] 增加数据关系图可视化
 - [ ] 支持从SQL DDL导入元数据
-- [ ] 提供Web界面
 - [ ] 支持增量数据生成
 - [ ] 添加更多数据质量规则
 - [ ] 支持自定义数据生成策略
+- [ ] API令牌认证
+- [ ] 团队协作功能
 
 ## 许可证
 
