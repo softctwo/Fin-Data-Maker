@@ -1,0 +1,52 @@
+# 数据源配置示例
+# 复制此文件为 datasources.yaml 并填写实际的连接信息
+
+datasources:
+  # MySQL示例
+  - name: mysql_production
+    type: mysql
+    host: localhost
+    port: 3306
+    database: prod_db
+    username: your_username
+    password: your_password
+    options:
+      charset: utf8mb4
+
+  # PostgreSQL示例
+  - name: postgres_test
+    type: postgresql
+    host: localhost
+    port: 5432
+    database: test_db
+    username: postgres
+    password: your_password
+    options: {}
+
+  # Oracle示例
+  - name: oracle_dev
+    type: oracle
+    host: localhost
+    port: 1521
+    database: orcl
+    username: system
+    password: your_password
+    options:
+      service_name: orcl
+
+  # SQL Server示例
+  - name: sqlserver_uat
+    type: sqlserver
+    host: localhost
+    port: 1433
+    database: uat_db
+    username: sa
+    password: your_password
+    options:
+      driver: ODBC Driver 17 for SQL Server
+
+  # SQLite示例
+  - name: sqlite_local
+    type: sqlite
+    database: /path/to/database.db
+    options: {}
