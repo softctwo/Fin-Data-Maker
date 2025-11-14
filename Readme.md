@@ -164,6 +164,9 @@ python examples/new_entities_example.py
 # 自定义表示例：创建保险单数据
 python examples/custom_table_example.py
 
+# DDL导入示例：从SQL DDL生成数据 🆕
+python examples/ddl_import_example.py
+
 # 生成SQL INSERT语句 🆕
 python tools/generate_sql_inserts.py
 ```
@@ -175,6 +178,10 @@ python tools/generate_sql_inserts.py
 1. **数据生成**（主页）
    - 4步向导式操作：连接数据库 → 选择表 → 配置参数 → 预览和导出
    - 支持5种数据库类型（MySQL、PostgreSQL、Oracle、SQL Server、SQLite）
+   - **DDL导入** 🆕：支持从CREATE TABLE语句直接导入表结构
+     - 粘贴SQL DDL即可自动解析表结构
+     - 实时预览解析结果
+     - 支持多表批量导入
    - 实时数据预览和质量报告
    - 配置保存和重用
 
@@ -230,6 +237,8 @@ Fin-Data-Maker/
 │   │   ├── db_connector.py      # 数据库连接器
 │   │   ├── metadata_extractor.py # 元数据提取器
 │   │   └── data_profiler.py     # 数据分析器
+│   ├── parsers/           # DDL解析模块 🆕
+│   │   └── ddl_parser.py  # SQL DDL解析器
 │   ├── web/               # Web应用模块 🆕
 │   │   ├── models.py      # 数据库模型（用户、配置、历史、任务）
 │   │   ├── auth.py        # 用户认证
@@ -248,6 +257,7 @@ Fin-Data-Maker/
 │   ├── schema.sql         # 数据库表结构定义
 │   ├── test_data.sql      # 测试数据
 │   ├── full_setup.sql     # 完整安装脚本
+│   ├── sample_ddl.sql     # DDL导入示例（电商系统）🆕
 │   └── README.md          # SQL使用说明
 ├── docker/                # Docker配置
 │   └── README.md          # Docker使用指南
@@ -256,7 +266,8 @@ Fin-Data-Maker/
 ├── examples/              # 示例代码
 │   ├── basic_example.py   # 基础示例
 │   ├── new_entities_example.py  # 新实体示例
-│   └── custom_table_example.py  # 自定义表示例
+│   ├── custom_table_example.py  # 自定义表示例
+│   └── ddl_import_example.py    # DDL导入示例 🆕
 ├── tests/                 # 单元测试
 ├── output/                # 输出目录
 ├── webapp.py              # Web应用基础版
@@ -521,6 +532,12 @@ class CustomRule(Rule):
 - [x] 数据库连接和元数据提取（支持5种主流数据库）
 - [x] 数据质量分析和profiling
 - [x] 多格式导出（CSV、JSON、Excel）
+- [x] **SQL DDL导入** 🆕 - 从CREATE TABLE语句导入表结构，支持：
+  - 解析标准SQL DDL语法（MySQL、PostgreSQL等）
+  - 自动映射SQL类型到系统字段类型
+  - 提取约束（主键、外键、唯一键）
+  - Web界面DDL导入功能
+  - 支持单表和多表批量导入
 
 **Web界面**：
 - [x] 基础版Web界面（快速开始）
@@ -558,7 +575,6 @@ class CustomRule(Rule):
 ### 📋 计划中功能
 
 **数据增强**：
-- [ ] 支持从SQL DDL导入元数据
 - [ ] 支持增量数据生成
 - [ ] 添加更多数据质量规则
 - [ ] 支持自定义数据生成策略
