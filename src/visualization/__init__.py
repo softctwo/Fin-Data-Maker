@@ -1,8 +1,8 @@
 """
-数据关系可视化模块
-提供ER图生成、关系图渲染等功能
+数据可视化模块
+提供数据关系图生成和其他可视化功能
 """
 
-from .relationship_visualizer import RelationshipVisualizer, VisualizationFormat
+from .relationship_graph import RelationshipGraphGenerator
 
-__all__ = ['RelationshipVisualizer', 'VisualizationFormat']
+__all__ = ['RelationshipGraphGenerator']

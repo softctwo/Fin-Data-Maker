@@ -16,14 +16,15 @@ from datetime import datetime, timedelta
 import tempfile
 
 # 导入模型和认证
-from src.web.models import db, User, Config, History, ScheduledTask, BatchTask
-from src.web.auth import login_manager
+from src.web.models import db, User, Config, History, ScheduledTask, BatchTask, APIToken
+from src.web.auth import login_manager, token_required
 
 # 导入核心功能
 from src.datasource.db_connector import DatabaseConnector, DatabaseType
 from src.datasource.metadata_extractor import MetadataExtractor
 from src.datasource.data_profiler import DataProfiler
 from src.core.app import DataMakerApp
+from src.visualization.relationship_graph import RelationshipGraphGenerator
 
 # 导入新增功能 (v2.1.0)
 from src.analysis.dependency_analyzer import DependencyAnalyzer
@@ -148,6 +149,13 @@ def logout():
 def index():
     """首页"""
     return render_template('index.html')
+
+
+@app.route('/strategies')
+@login_required
+def strategies():
+    """策略管理页面"""
+    return render_template('strategies.html')
 
 
 @app.route('/dashboard')
@@ -961,6 +969,495 @@ def get_quality_radar(table_name):
         return jsonify({
             'success': True,
             'data': chart_data
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# ============ 策略管理API ============
+
+@app.route('/api/strategies/types', methods=['GET'])
+@login_required
+def get_strategy_types():
+    """获取所有可用的策略类型"""
+    try:
+        from src.strategies.strategy import StrategyType
+
+        types = [
+            {
+                'value': StrategyType.SEQUENTIAL.value,
+                'label': '顺序生成',
+                'description': '生成递增的序列值',
+                'config_fields': ['start', 'step', 'format']
+            },
+            {
+                'value': StrategyType.RANDOM_RANGE.value,
+                'label': '随机范围',
+                'description': '在指定范围内生成随机值',
+                'config_fields': ['min_value', 'max_value', 'data_type', 'precision']
+            },
+            {
+                'value': StrategyType.WEIGHTED_CHOICE.value,
+                'label': '加权选择',
+                'description': '根据权重从选项中随机选择',
+                'config_fields': ['choices', 'weights']
+            },
+            {
+                'value': StrategyType.CONDITIONAL.value,
+                'label': '条件生成',
+                'description': '根据条件生成不同的值',
+                'config_fields': ['conditions', 'default']
+            },
+            {
+                'value': StrategyType.DEPENDENT_FIELD.value,
+                'label': '依赖字段',
+                'description': '根据其他字段的值生成数据',
+                'config_fields': ['source_field', 'mapping', 'calculation', 'factor', 'default']
+            },
+            {
+                'value': StrategyType.DATE_RANGE.value,
+                'label': '日期范围',
+                'description': '在指定日期范围内生成随机日期',
+                'config_fields': ['start_date', 'end_date', 'date_format', 'sequential', 'step_days']
+            },
+            {
+                'value': StrategyType.CUSTOM_FUNCTION.value,
+                'label': '自定义函数',
+                'description': '使用自定义Python表达式生成数据',
+                'config_fields': ['expression']
+            },
+            {
+                'value': StrategyType.DISTRIBUTION.value,
+                'label': '分布生成',
+                'description': '根据统计分布生成数据',
+                'config_fields': ['distribution_type', 'mean', 'std_dev', 'min_value', 'max_value', 'lambda_param', 'round_to_int']
+            }
+        ]
+
+        return jsonify({'success': True, 'data': types})
+
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/strategies', methods=['GET'])
+@login_required
+def list_strategies():
+    """列出用户的所有策略"""
+    try:
+        # 从session获取或创建策略管理器
+        session_id = str(current_user.id)
+
+        # 这里我们暂时从配置中加载策略
+        # 生产环境应该保存到数据库
+        strategies = []
+
+        # 可以从用户配置文件加载策略
+        strategy_file = f"strategies_{current_user.id}.json"
+        if os.path.exists(strategy_file):
+            with open(strategy_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                strategies = data.get('strategies', [])
+
+        return jsonify({'success': True, 'data': strategies})
+
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/strategies', methods=['POST'])
+@login_required
+def create_strategy():
+    """创建新策略"""
+    try:
+        from src.strategies.strategy_manager import StrategyManager
+
+        data = request.json
+        strategy_type = data.get('type')
+        name = data.get('name')
+        description = data.get('description', '')
+        config = data.get('config', {})
+
+        if not strategy_type or not name:
+            return jsonify({'success': False, 'message': '策略类型和名称是必填的'}), 400
+
+        # 创建策略
+        manager = StrategyManager()
+        strategy = manager.create_strategy(strategy_type, name, description, config)
+
+        if not strategy:
+            return jsonify({'success': False, 'message': '无效的策略类型'}), 400
+
+        # 验证配置
+        if not strategy.validate_config():
+            return jsonify({'success': False, 'message': '策略配置无效'}), 400
+
+        # 保存到文件（生产环境应保存到数据库）
+        strategy_file = f"strategies_{current_user.id}.json"
+        strategies = []
+
+        if os.path.exists(strategy_file):
+            with open(strategy_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                strategies = data.get('strategies', [])
+
+        strategies.append(strategy.to_dict())
+
+        with open(strategy_file, 'w', encoding='utf-8') as f:
+            json.dump({'strategies': strategies}, f, indent=2, ensure_ascii=False)
+
+        return jsonify({'success': True, 'data': strategy.to_dict()})
+
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/strategies/<strategy_name>', methods=['DELETE'])
+@login_required
+def delete_strategy(strategy_name):
+    """删除策略"""
+    try:
+        strategy_file = f"strategies_{current_user.id}.json"
+
+        if not os.path.exists(strategy_file):
+            return jsonify({'success': False, 'message': '策略不存在'}), 404
+
+        with open(strategy_file, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            strategies = data.get('strategies', [])
+
+        # 删除指定策略
+        strategies = [s for s in strategies if s.get('name') != strategy_name]
+
+        with open(strategy_file, 'w', encoding='utf-8') as f:
+            json.dump({'strategies': strategies}, f, indent=2, ensure_ascii=False)
+
+        return jsonify({'success': True, 'message': '策略已删除'})
+
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/strategies/<strategy_name>', methods=['PUT'])
+@login_required
+def update_strategy(strategy_name):
+    """更新策略"""
+    try:
+        from src.strategies.strategy_manager import StrategyManager
+
+        data = request.json
+        strategy_file = f"strategies_{current_user.id}.json"
+
+        if not os.path.exists(strategy_file):
+            return jsonify({'success': False, 'message': '策略不存在'}), 404
+
+        with open(strategy_file, 'r', encoding='utf-8') as f:
+            file_data = json.load(f)
+            strategies = file_data.get('strategies', [])
+
+        # 找到并更新策略
+        found = False
+        for i, s in enumerate(strategies):
+            if s.get('name') == strategy_name:
+                # 更新策略配置
+                s['description'] = data.get('description', s.get('description'))
+                s['config'] = data.get('config', s.get('config'))
+
+                # 验证配置
+                manager = StrategyManager()
+                strategy = manager.create_strategy(
+                    s['type'],
+                    s['name'],
+                    s['description'],
+                    s['config']
+                )
+
+                if not strategy or not strategy.validate_config():
+                    return jsonify({'success': False, 'message': '策略配置无效'}), 400
+
+                strategies[i] = strategy.to_dict()
+                found = True
+                break
+
+        if not found:
+            return jsonify({'success': False, 'message': '策略不存在'}), 404
+
+        with open(strategy_file, 'w', encoding='utf-8') as f:
+            json.dump({'strategies': strategies}, f, indent=2, ensure_ascii=False)
+
+        return jsonify({'success': True, 'message': '策略已更新'})
+
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# ============ 数据关系图API ============
+
+@app.route('/api/relationships/graph', methods=['POST'])
+@login_required
+def get_relationship_graph():
+    """获取数据关系图"""
+    try:
+        session_id = str(current_user.id)
+
+        # 获取提取器
+        if session_id not in extractors:
+            return jsonify({'success': False, 'message': '请先连接数据库'}), 400
+
+        extractor = extractors[session_id]
+
+        # 获取所有表
+        tables_info = extractor.connector.list_tables()
+
+        # 提取表元数据
+        graph_gen = RelationshipGraphGenerator()
+
+        for table_info in tables_info:
+            table_name = table_info['name']
+            table = extractor.extract_table(table_name)
+            graph_gen.add_table(table)
+
+        # 生成图数据
+        graph_data = graph_gen.generate_graph_data()
+
+        return jsonify({'success': True, 'data': graph_data})
+
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/relationships/table/<table_name>', methods=['GET'])
+@login_required
+def get_table_relationships(table_name):
+    """获取特定表的关系"""
+    try:
+        session_id = str(current_user.id)
+
+        if session_id not in extractors:
+            return jsonify({'success': False, 'message': '请先连接数据库'}), 400
+
+        extractor = extractors[session_id]
+        tables_info = extractor.connector.list_tables()
+
+        graph_gen = RelationshipGraphGenerator()
+
+        for table_info in tables_info:
+            tbl_name = table_info['name']
+            table = extractor.extract_table(tbl_name)
+            graph_gen.add_table(table)
+
+        # 获取表依赖关系
+        dependencies = graph_gen.get_table_dependencies(table_name)
+
+        return jsonify({'success': True, 'data': dependencies})
+
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/relationships/statistics', methods=['GET'])
+@login_required
+def get_relationship_statistics():
+    """获取关系统计信息"""
+    try:
+        session_id = str(current_user.id)
+
+        if session_id not in extractors:
+            return jsonify({'success': False, 'message': '请先连接数据库'}), 400
+
+        extractor = extractors[session_id]
+        tables_info = extractor.connector.list_tables()
+
+        graph_gen = RelationshipGraphGenerator()
+
+        for table_info in tables_info:
+            table_name = table_info['name']
+            table = extractor.extract_table(table_name)
+            graph_gen.add_table(table)
+
+        # 获取统计信息
+        stats = graph_gen.get_statistics()
+
+        return jsonify({'success': True, 'data': stats})
+
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/relationships/hierarchy', methods=['POST'])
+@login_required
+def get_relationship_hierarchy():
+    """获取层次结构数据"""
+    try:
+        session_id = str(current_user.id)
+        data = request.json or {}
+        root_table = data.get('root_table')
+
+        if session_id not in extractors:
+            return jsonify({'success': False, 'message': '请先连接数据库'}), 400
+
+        extractor = extractors[session_id]
+        tables_info = extractor.connector.list_tables()
+
+        graph_gen = RelationshipGraphGenerator()
+
+        for table_info in tables_info:
+            table_name = table_info['name']
+            table = extractor.extract_table(table_name)
+            graph_gen.add_table(table)
+
+        # 生成层次结构
+        hierarchy = graph_gen.generate_hierarchy(root_table)
+
+        return jsonify({'success': True, 'data': hierarchy})
+
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# ============ API令牌管理 ============
+
+@app.route('/api/tokens', methods=['GET'])
+@login_required
+def list_tokens():
+    """列出用户的所有令牌"""
+    try:
+        tokens = APIToken.query.filter_by(user_id=current_user.id).order_by(APIToken.created_at.desc()).all()
+        return jsonify({
+            'success': True,
+            'data': [token.to_dict() for token in tokens]
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/tokens', methods=['POST'])
+@login_required
+def create_token():
+    """创建新令牌"""
+    try:
+        data = request.json
+        name = data.get('name')
+        description = data.get('description', '')
+        scopes = data.get('scopes', [])
+        expires_days = data.get('expires_days')  # 过期天数，None表示永不过期
+
+        if not name:
+            return jsonify({'success': False, 'message': '令牌名称不能为空'}), 400
+
+        # 生成令牌
+        token_string = APIToken.generate_token()
+
+        # 计算过期时间
+        expires_at = None
+        if expires_days:
+            expires_at = datetime.utcnow() + timedelta(days=int(expires_days))
+
+        # 创建令牌
+        token = APIToken(
+            user_id=current_user.id,
+            name=name,
+            token=token_string,
+            description=description,
+            scopes=json.dumps(scopes),
+            expires_at=expires_at
+        )
+
+        db.session.add(token)
+        db.session.commit()
+
+        # 返回包含令牌字符串的完整信息（仅此一次）
+        return jsonify({
+            'success': True,
+            'message': '令牌创建成功，请妥善保存，此令牌仅显示一次',
+            'data': token.to_dict(include_token=True)
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/tokens/<int:token_id>', methods=['DELETE'])
+@login_required
+def delete_token(token_id):
+    """删除令牌"""
+    try:
+        token = APIToken.query.filter_by(id=token_id, user_id=current_user.id).first()
+
+        if not token:
+            return jsonify({'success': False, 'message': '令牌不存在'}), 404
+
+        db.session.delete(token)
+        db.session.commit()
+
+        return jsonify({'success': True, 'message': '令牌已删除'})
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/tokens/<int:token_id>/toggle', methods=['POST'])
+@login_required
+def toggle_token(token_id):
+    """启用/禁用令牌"""
+    try:
+        token = APIToken.query.filter_by(id=token_id, user_id=current_user.id).first()
+
+        if not token:
+            return jsonify({'success': False, 'message': '令牌不存在'}), 404
+
+        token.is_active = not token.is_active
+        db.session.commit()
+
+        status = '启用' if token.is_active else '禁用'
+        return jsonify({'success': True, 'message': f'令牌已{status}'})
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/tokens/scopes', methods=['GET'])
+@login_required
+def get_available_scopes():
+    """获取可用的权限范围"""
+    scopes = [
+        {'value': 'data:generate', 'label': '生成数据', 'description': '允许生成测试数据'},
+        {'value': 'data:export', 'label': '导出数据', 'description': '允许导出生成的数据'},
+        {'value': 'table:read', 'label': '读取表', 'description': '允许读取表结构和元数据'},
+        {'value': 'table:write', 'label': '写入表', 'description': '允许修改表结构'},
+        {'value': 'config:read', 'label': '读取配置', 'description': '允许读取配置信息'},
+        {'value': 'config:write', 'label': '写入配置', 'description': '允许创建和修改配置'},
+    ]
+    return jsonify({'success': True, 'data': scopes})
+
+
+# 示例：使用令牌认证的API端点
+@app.route('/api/v1/generate', methods=['POST'])
+@token_required(scopes=['data:generate'])
+def api_generate_data():
+    """
+    使用API令牌生成数据（示例）
+    需要 data:generate 权限
+    """
+    try:
+        from src.web.auth import get_user_from_token
+
+        user = get_user_from_token()
+
+        # 这里可以实现数据生成逻辑
+        # ...
+
+        return jsonify({
+            'success': True,
+            'message': f'数据生成请求已接收，用户: {user.username}'
         })
 
     except Exception as e:

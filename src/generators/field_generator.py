@@ -6,10 +6,18 @@
 import random
 import string
 from datetime import datetime, timedelta
-from typing import Any, Optional, Set
+from typing import Any, Optional, Set, Dict
 from faker import Faker
 from ..metadata.field import Field, FieldType
 from .base_generator import BaseGenerator
+
+# 导入策略相关类
+try:
+    from ..strategies.strategy import StrategyContext
+    from ..strategies.strategy_manager import StrategyManager
+    STRATEGIES_AVAILABLE = True
+except ImportError:
+    STRATEGIES_AVAILABLE = False
 
 
 class FieldGenerator(BaseGenerator):
@@ -32,17 +40,36 @@ class FieldGenerator(BaseGenerator):
             Faker.seed(seed)
         self.unique_values: dict[str, Set[Any]] = {}
 
+        # 初始化策略管理器
+        self.strategy_manager = StrategyManager() if STRATEGIES_AVAILABLE else None
+
+        # 字段到策略的映射
+        self.field_strategies: Dict[str, str] = {}
+
     def generate(self, field: Field, **kwargs) -> Any:
         """
         生成字段数据
 
         Args:
             field: 字段定义
-            **kwargs: 额外参数
+            **kwargs: 额外参数（可以包含context用于策略生成）
 
         Returns:
             Any: 生成的字段值
         """
+        # 检查是否使用自定义策略
+        if self.strategy_manager and field.name in self.field_strategies:
+            strategy_name = self.field_strategies[field.name]
+            context = kwargs.get('context')
+
+            if context:
+                value = self.strategy_manager.apply_strategy(strategy_name, context)
+                if value is not None:
+                    # 如果字段要求唯一，确保唯一性
+                    if field.unique:
+                        value = self._ensure_unique(field.name, value, field)
+                    return value
+
         # 如果有默认值，使用默认值
         if field.default_value is not None:
             return field.default_value
@@ -196,3 +223,29 @@ class FieldGenerator(BaseGenerator):
     def reset_unique_tracker(self):
         """重置唯一值跟踪器"""
         self.unique_values = {}
+
+    # ===== 策略管理方法 =====
+
+    def set_field_strategy(self, field_name: str, strategy_name: str):
+        """
+        为字段设置自定义策略
+
+        Args:
+            field_name: 字段名
+            strategy_name: 策略名
+        """
+        self.field_strategies[field_name] = strategy_name
+
+    def remove_field_strategy(self, field_name: str):
+        """
+        移除字段的自定义策略
+
+        Args:
+            field_name: 字段名
+        """
+        if field_name in self.field_strategies:
+            del self.field_strategies[field_name]
+
+    def get_strategy_manager(self) -> Optional[StrategyManager]:
+        """获取策略管理器"""
+        return self.strategy_manager
