@@ -294,6 +294,161 @@ def add_history(operation_type, table_name=None, record_count=None, status='succ
         print(f"添加历史记录失败: {str(e)}")
 
 
+# ============ DDL解析API ============
+
+@app.route('/api/ddl/parse', methods=['POST'])
+@login_required
+def parse_ddl():
+    """解析DDL语句"""
+    try:
+        from src.parsers.ddl_parser import DDLParser
+
+        data = request.json
+        ddl_text = data.get('ddl')
+
+        if not ddl_text:
+            return jsonify({'success': False, 'message': 'DDL语句不能为空'}), 400
+
+        # 解析DDL
+        parser = DDLParser()
+
+        # 检查是否包含多个表
+        statements = parser._split_statements(ddl_text)
+
+        if len(statements) == 0:
+            return jsonify({'success': False, 'message': '未找到有效的CREATE TABLE语句'}), 400
+
+        tables_info = []
+        for statement in statements:
+            try:
+                table = parser.parse_ddl(statement)
+
+                # 转换为字典格式
+                table_info = {
+                    'name': table.name,
+                    'description': table.description,
+                    'primary_key': table.primary_key,
+                    'fields': [
+                        {
+                            'name': f.name,
+                            'type': f.field_type.value,
+                            'description': f.description,
+                            'required': f.required,
+                            'unique': f.unique,
+                            'default_value': f.default_value,
+                            'max_length': f.max_length,
+                            'enum_values': f.enum_values
+                        }
+                        for f in table.fields.values()
+                    ],
+                    'foreign_keys': [
+                        {
+                            'field': fk['field_name'],
+                            'ref_table': fk['reference_table'],
+                            'ref_field': fk['reference_field']
+                        }
+                        for fk in table.foreign_keys
+                    ]
+                }
+
+                tables_info.append(table_info)
+            except Exception as e:
+                return jsonify({
+                    'success': False,
+                    'message': f'解析DDL失败: {str(e)}'
+                }), 400
+
+        return jsonify({
+            'success': True,
+            'data': {
+                'tables': tables_info,
+                'count': len(tables_info)
+            }
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'解析失败: {str(e)}'
+        }), 500
+
+
+@app.route('/api/ddl/import', methods=['POST'])
+@login_required
+def import_ddl():
+    """导入DDL并保存为配置"""
+    try:
+        from src.parsers.ddl_parser import DDLParser
+
+        data = request.json
+        ddl_text = data.get('ddl')
+        config_name = data.get('config_name')
+        db_config = data.get('db_config')
+
+        if not ddl_text or not config_name or not db_config:
+            return jsonify({'success': False, 'message': '缺少必需参数'}), 400
+
+        # 解析DDL
+        parser = DDLParser()
+        statements = parser._split_statements(ddl_text)
+
+        if len(statements) == 0:
+            return jsonify({'success': False, 'message': '未找到有效的CREATE TABLE语句'}), 400
+
+        tables = []
+        for statement in statements:
+            try:
+                table = parser.parse_ddl(statement)
+                tables.append(table.name)
+            except Exception as e:
+                return jsonify({
+                    'success': False,
+                    'message': f'解析DDL失败: {str(e)}'
+                }), 400
+
+        # 保存配置
+        config = Config(
+            user_id=current_user.id,
+            name=config_name,
+            db_type=db_config.get('type', 'mysql'),
+            db_host=db_config.get('host'),
+            db_port=db_config.get('port'),
+            db_name=db_config.get('database'),
+            db_user=db_config.get('username'),
+            db_password=db_config.get('password'),
+            metadata=json.dumps({
+                'tables': tables,
+                'source': 'ddl_import'
+            }, ensure_ascii=False)
+        )
+
+        db.session.add(config)
+        db.session.commit()
+
+        # 添加历史记录
+        add_history(
+            operation_type='ddl_import',
+            table_name=', '.join(tables),
+            status='success',
+            details={'tables_count': len(tables), 'config_id': config.id}
+        )
+
+        return jsonify({
+            'success': True,
+            'message': f'成功导入{len(tables)}个表',
+            'data': {
+                'config_id': config.id,
+                'tables': tables
+            }
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'导入失败: {str(e)}'
+        }), 500
+
+
 # ============ 批量处理API ============
 
 @app.route('/api/batch/create', methods=['POST'])

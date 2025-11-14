@@ -637,3 +637,157 @@ function showSuccess(message) {
 function showError(message) {
     alert('错误: ' + message);
 }
+
+// ============ DDL导入功能 ============
+
+// 预览DDL解析结果
+document.getElementById('parse-ddl-btn')?.addEventListener('click', async function() {
+    const ddlText = document.getElementById('ddl-text').value.trim();
+
+    if (!ddlText) {
+        showError('请输入DDL语句');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/ddl/parse', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                ddl: ddlText
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            displayDDLParseResult(result.data);
+        } else {
+            showError(result.message);
+        }
+    } catch (error) {
+        console.error('DDL解析失败:', error);
+        showError('DDL解析失败: ' + error.message);
+    }
+});
+
+// 显示DDL解析结果
+function displayDDLParseResult(data) {
+    const resultDiv = document.getElementById('ddl-parse-result');
+
+    if (data.count === 0) {
+        resultDiv.innerHTML = `
+            <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle"></i> 未找到有效的表定义
+            </div>
+        `;
+        return;
+    }
+
+    let html = `
+        <div class="alert alert-success">
+            <i class="bi bi-check-circle"></i> 成功解析 ${data.count} 个表
+        </div>
+    `;
+
+    data.tables.forEach((table, index) => {
+        html += `
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="bi bi-table"></i> ${table.name}
+                        ${table.primary_key ? `<span class="badge bg-primary ms-2">主键: ${table.primary_key}</span>` : ''}
+                    </h6>
+                    <small class="text-muted">${table.description}</small>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>字段名</th>
+                                <th>类型</th>
+                                <th>必填</th>
+                                <th>唯一</th>
+                                <th>说明</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+        `;
+
+        table.fields.forEach(field => {
+            html += `
+                <tr>
+                    <td><code>${field.name}</code></td>
+                    <td>${field.type}</td>
+                    <td>${field.required ? '<i class="bi bi-check text-success"></i>' : '-'}</td>
+                    <td>${field.unique ? '<i class="bi bi-check text-success"></i>' : '-'}</td>
+                    <td>${field.description || '-'}</td>
+                </tr>
+            `;
+        });
+
+        html += `
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    });
+
+    resultDiv.innerHTML = html;
+}
+
+// DDL导入表单提交
+document.getElementById('ddl-import-form')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const ddlText = document.getElementById('ddl-text').value.trim();
+    const configName = document.getElementById('ddl-config-name').value.trim();
+
+    if (!ddlText || !configName) {
+        showError('请填写所有必填字段');
+        return;
+    }
+
+    try {
+        // 导入DDL
+        const response = await fetch('/api/ddl/import', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                ddl: ddlText,
+                config_name: configName,
+                db_config: {
+                    type: 'mysql',  // 默认使用MySQL
+                    host: 'localhost',
+                    port: 3306,
+                    database: 'imported_from_ddl',
+                    username: '',
+                    password: ''
+                }
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showSuccess(result.message);
+
+            // 清空表单
+            document.getElementById('ddl-import-form').reset();
+            document.getElementById('ddl-parse-result').innerHTML = '';
+
+            // 切换到数据库连接标签，让用户看到导入的配置
+            showSuccess(`导入成功！配置ID: ${result.data.config_id}`);
+        } else {
+            showError(result.message);
+        }
+    } catch (error) {
+        console.error('DDL导入失败:', error);
+        showError('DDL导入失败: ' + error.message);
+    }
+});
