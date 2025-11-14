@@ -9,6 +9,9 @@ from .schemas import (
     create_transaction_table,
     create_loan_table,
     create_credit_card_table,
+    create_bond_table,
+    create_fund_table,
+    create_derivative_table,
 )
 
 __all__ = [
@@ -17,4 +20,7 @@ __all__ = [
     'create_transaction_table',
     'create_loan_table',
     'create_credit_card_table',
+    'create_bond_table',
+    'create_fund_table',
+    'create_derivative_table',
 ]
