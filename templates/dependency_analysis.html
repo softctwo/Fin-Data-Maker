@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>依赖关系分析 - Fin-Data-Maker</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f5f7fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .sidebar {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding-top: 20px;
+        }
+        .sidebar a {
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+            display: block;
+            transition: all 0.3s;
+        }
+        .sidebar a:hover {
+            background: rgba(255,255,255,0.1);
+        }
+        .sidebar a.active {
+            background: rgba(255,255,255,0.2);
+            border-left: 4px solid white;
+        }
+        .card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px 10px 0 0 !important;
+            padding: 15px 20px;
+        }
+        .table-checkbox {
+            cursor: pointer;
+        }
+        .analysis-result {
+            display: none;
+        }
+        .badge-cycle {
+            background-color: #dc3545;
+            font-size: 0.9em;
+        }
+        .badge-success {
+            background-color: #28a745;
+        }
+        .dependency-edge {
+            background-color: #f8f9fa;
+            padding: 8px 12px;
+            border-left: 3px solid #667eea;
+            margin-bottom: 5px;
+            border-radius: 4px;
+        }
+        .generation-order li {
+            background-color: #e7f3ff;
+            padding: 10px;
+            margin-bottom: 5px;
+            border-radius: 5px;
+            border-left: 4px solid #667eea;
+        }
+        .level-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            margin-left: 10px;
+        }
+        .level-0 { background-color: #d4edda; color: #155724; }
+        .level-1 { background-color: #fff3cd; color: #856404; }
+        .level-2 { background-color: #f8d7da; color: #721c24; }
+        pre {
+            background-color: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+        }
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+        }
+        .spinner-container {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- 侧边栏 -->
+            <div class="col-md-2 sidebar">
+                <h4 class="text-white text-center mb-4"><i class="bi bi-graph-up"></i> Fin-Data-Maker</h4>
+                <a href="/dashboard"><i class="bi bi-speedometer2"></i> 仪表盘</a>
+                <a href="/analysis/dependency" class="active"><i class="bi bi-diagram-3"></i> 依赖分析</a>
+                <a href="/visualization/er-diagram"><i class="bi bi-diagram-2"></i> ER图可视化</a>
+                <a href="/monitoring/progress"><i class="bi bi-activity"></i> 进度监控</a>
+                <hr style="border-color: rgba(255,255,255,0.2);">
+                <a href="/auth/logout"><i class="bi bi-box-arrow-right"></i> 退出登录</a>
+            </div>
+
+            <!-- 主内容区 -->
+            <div class="col-md-10 p-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2><i class="bi bi-diagram-3"></i> 表间依赖关系分析</h2>
+                    <button class="btn btn-outline-secondary" onclick="window.location.reload()">
+                        <i class="bi bi-arrow-clockwise"></i> 刷新
+                    </button>
+                </div>
+
+                <!-- 表选择卡片 -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-table"></i> 选择要分析的表</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row" id="tableSelection">
+                            <!-- 动态加载表列表 -->
+                        </div>
+                        <div class="mt-3">
+                            <button class="btn btn-primary" onclick="analyzeRelationships()">
+                                <i class="bi bi-play-circle"></i> 开始分析
+                            </button>
+                            <button class="btn btn-secondary" onclick="selectAll()">
+                                <i class="bi bi-check-all"></i> 全选
+                            </button>
+                            <button class="btn btn-outline-secondary" onclick="clearSelection()">
+                                <i class="bi bi-x-circle"></i> 清空
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 加载动画 -->
+                <div class="spinner-container" id="loadingSpinner">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">正在分析依赖关系...</p>
+                </div>
+
+                <!-- 分析结果 -->
+                <div id="analysisResult" class="analysis-result">
+                    <!-- 循环依赖警告 -->
+                    <div id="cycleWarning" class="alert alert-danger" style="display: none;">
+                        <h5><i class="bi bi-exclamation-triangle-fill"></i> 检测到循环依赖！</h5>
+                        <div id="cycleDetails"></div>
+                    </div>
+
+                    <!-- 成功状态 -->
+                    <div id="successStatus" class="alert alert-success" style="display: none;">
+                        <h5><i class="bi bi-check-circle-fill"></i> 分析完成</h5>
+                        <p class="mb-0">未检测到循环依赖，可以正常生成数据。</p>
+                    </div>
+
+                    <!-- 统计信息卡片 -->
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="card">
+                                <div class="card-body text-center">
+                                    <h3 id="totalTables" class="text-primary">0</h3>
+                                    <p class="text-muted mb-0">表总数</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card">
+                                <div class="card-body text-center">
+                                    <h3 id="totalEdges" class="text-info">0</h3>
+                                    <p class="text-muted mb-0">依赖关系数</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card">
+                                <div class="card-body text-center">
+                                    <h3 id="rootTables" class="text-success">0</h3>
+                                    <p class="text-muted mb-0">根表数量</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card">
+                                <div class="card-body text-center">
+                                    <h3 id="leafTables" class="text-warning">0</h3>
+                                    <p class="text-muted mb-0">叶子表数量</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 推荐生成顺序 -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-list-ol"></i> 推荐的数据生成顺序</h5>
+                        </div>
+                        <div class="card-body">
+                            <ol class="generation-order" id="generationOrder">
+                                <!-- 动态填充 -->
+                            </ol>
+                        </div>
+                    </div>
+
+                    <!-- 依赖层级 -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-layers"></i> 依赖层级分布</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="dependencyLevels">
+                                <!-- 动态填充 -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 依赖关系详情 -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-arrow-left-right"></i> 依赖关系详情</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="dependencyEdges">
+                                <!-- 动态填充 -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 完整报告 -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-file-earmark-text"></i> 完整分析报告</h5>
+                        </div>
+                        <div class="card-body">
+                            <pre id="fullReport"></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 加载可用表列表
+        async function loadTables() {
+            try {
+                const response = await fetch('/api/analysis/tables');
+                const result = await response.json();
+
+                if (result.success) {
+                    const container = document.getElementById('tableSelection');
+                    container.innerHTML = result.data.map(table => `
+                        <div class="col-md-3 mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input table-checkbox" type="checkbox"
+                                       value="${table.name}" id="table_${table.name}">
+                                <label class="form-check-label" for="table_${table.name}">
+                                    <strong>${table.name}</strong><br>
+                                    <small class="text-muted">${table.description}</small>
+                                </label>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('加载表列表失败:', error);
+                alert('加载表列表失败');
+            }
+        }
+
+        function selectAll() {
+            document.querySelectorAll('.table-checkbox').forEach(cb => cb.checked = true);
+        }
+
+        function clearSelection() {
+            document.querySelectorAll('.table-checkbox').forEach(cb => cb.checked = false);
+        }
+
+        async function analyzeRelationships() {
+            // 获取选中的表
+            const selectedTables = Array.from(document.querySelectorAll('.table-checkbox:checked'))
+                .map(cb => cb.value);
+
+            if (selectedTables.length === 0) {
+                alert('请至少选择一个表');
+                return;
+            }
+
+            // 显示加载动画
+            document.getElementById('loadingSpinner').style.display = 'block';
+            document.getElementById('analysisResult').style.display = 'none';
+
+            try {
+                const response = await fetch('/api/analysis/dependency', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tables: selectedTables })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    displayResults(result.data);
+                } else {
+                    alert('分析失败: ' + result.message);
+                }
+            } catch (error) {
+                console.error('分析失败:', error);
+                alert('分析失败');
+            } finally {
+                document.getElementById('loadingSpinner').style.display = 'none';
+            }
+        }
+
+        function displayResults(data) {
+            // 显示结果区域
+            document.getElementById('analysisResult').style.display = 'block';
+
+            // 显示循环依赖警告或成功状态
+            if (data.has_cycles) {
+                document.getElementById('cycleWarning').style.display = 'block';
+                document.getElementById('successStatus').style.display = 'none';
+
+                const cycleDetails = data.cycles.map(c =>
+                    `<div class="badge badge-cycle">${c.cycle.join(' → ')}</div>`
+                ).join(' ');
+                document.getElementById('cycleDetails').innerHTML = cycleDetails;
+            } else {
+                document.getElementById('cycleWarning').style.display = 'none';
+                document.getElementById('successStatus').style.display = 'block';
+            }
+
+            // 统计信息
+            document.getElementById('totalTables').textContent = Object.keys(data.dependency_levels).length;
+            document.getElementById('totalEdges').textContent = data.edges.length;
+            document.getElementById('rootTables').textContent = data.root_tables.length;
+            document.getElementById('leafTables').textContent = data.leaf_tables.length;
+
+            // 生成顺序
+            const orderHtml = data.generation_order.map((table, index) => {
+                const level = data.dependency_levels[table] || 0;
+                return `<li>${index + 1}. <strong>${table}</strong>
+                        <span class="level-badge level-${level}">层级 ${level}</span>
+                        </li>`;
+            }).join('');
+            document.getElementById('generationOrder').innerHTML = orderHtml;
+
+            // 依赖层级
+            const levelGroups = {};
+            for (const [table, level] of Object.entries(data.dependency_levels)) {
+                if (!levelGroups[level]) levelGroups[level] = [];
+                levelGroups[level].push(table);
+            }
+
+            const levelsHtml = Object.keys(levelGroups).sort().map(level => `
+                <div class="mb-3">
+                    <span class="badge level-badge level-${level}">层级 ${level}</span>
+                    <span class="ms-2">${levelGroups[level].join(', ')}</span>
+                </div>
+            `).join('');
+            document.getElementById('dependencyLevels').innerHTML = levelsHtml;
+
+            // 依赖关系详情
+            const edgesHtml = data.edges.length > 0
+                ? data.edges.map(edge => `
+                    <div class="dependency-edge">
+                        <strong>${edge.from}</strong>.<code>${edge.field}</code>
+                        → <strong>${edge.to}</strong>.<code>${edge.reference}</code>
+                    </div>
+                `).join('')
+                : '<p class="text-muted">无依赖关系</p>';
+            document.getElementById('dependencyEdges').innerHTML = edgesHtml;
+
+            // 完整报告
+            document.getElementById('fullReport').textContent = data.report;
+        }
+
+        // 页面加载时初始化
+        window.onload = loadTables;
+    </script>
+</body>
+</html>
