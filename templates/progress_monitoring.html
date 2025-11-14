@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>进度监控 - Fin-Data-Maker</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { background-color: #f5f7fa; font-family: 'Segoe UI', sans-serif; }
+        .sidebar { min-height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding-top: 20px; }
+        .sidebar a { color: white; text-decoration: none; padding: 10px 20px; display: block; transition: all 0.3s; }
+        .sidebar a:hover { background: rgba(255,255,255,0.1); }
+        .sidebar a.active { background: rgba(255,255,255,0.2); border-left: 4px solid white; }
+        .card { border: none; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .card-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 10px 10px 0 0 !important; padding: 15px 20px; }
+        .progress { height: 30px; border-radius: 15px; }
+        .progress-bar { font-size: 14px; line-height: 30px; }
+        .event-item { background-color: #f8f9fa; padding: 10px; margin-bottom: 8px; border-left: 3px solid #667eea; border-radius: 4px; }
+        .event-item .badge { font-size: 0.75em; }
+        .event-started { border-left-color: #28a745; }
+        .event-progress { border-left-color: #007bff; }
+        .event-completed { border-left-color: #28a745; }
+        .event-error { border-left-color: #dc3545; }
+        .status-display { font-size: 1.5em; font-weight: bold; }
+        .eta-display { color: #6c757d; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-2 sidebar">
+                <h4 class="text-white text-center mb-4"><i class="bi bi-graph-up"></i> Fin-Data-Maker</h4>
+                <a href="/dashboard"><i class="bi bi-speedometer2"></i> 仪表盘</a>
+                <a href="/analysis/dependency"><i class="bi bi-diagram-3"></i> 依赖分析</a>
+                <a href="/visualization/er-diagram"><i class="bi bi-diagram-2"></i> ER图可视化</a>
+                <a href="/monitoring/progress" class="active"><i class="bi bi-activity"></i> 进度监控</a>
+                <hr style="border-color: rgba(255,255,255,0.2);">
+                <a href="/auth/logout"><i class="bi bi-box-arrow-right"></i> 退出登录</a>
+            </div>
+
+            <div class="col-md-10 p-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2><i class="bi bi-activity"></i> 数据生成进度监控</h2>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-bar-chart-line"></i> 实时进度</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>当前表: <strong id="currentTable">-</strong></span>
+                                <span class="status-display" id="statusDisplay">待开始</span>
+                            </div>
+                            <div class="progress">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                     id="progressBar" role="progressbar" style="width: 0%">0%</div>
+                            </div>
+                            <div class="mt-2">
+                                <span>进度: <strong id="progressText">0/0</strong></span>
+                                <span class="ms-3 eta-display" id="etaText"></span>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="text-center p-3 bg-light rounded">
+                                    <h4 id="elapsedTime">0秒</h4>
+                                    <small class="text-muted">已用时间</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center p-3 bg-light rounded">
+                                    <h4 id="completedCount">0</h4>
+                                    <small class="text-muted">已完成</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center p-3 bg-light rounded">
+                                    <h4 id="totalCount">0</h4>
+                                    <small class="text-muted">总数</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center p-3 bg-light rounded">
+                                    <h4 id="eventCount">0</h4>
+                                    <small class="text-muted">事件数</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-list-ul"></i> 事件日志 (最近50条)</h5>
+                    </div>
+                    <div class="card-body" style="max-height: 500px; overflow-y: auto;">
+                        <div id="eventLog">
+                            <p class="text-muted text-center">暂无事件</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-play-circle"></i> 演示控制</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">提示: 进度监控功能已集成到数据生成流程中。本页面展示如何实时显示生成进度。</p>
+                        <button class="btn btn-primary" onclick="startDemo()">
+                            <i class="bi bi-play"></i> 开始演示
+                        </button>
+                        <button class="btn btn-danger" onclick="stopDemo()" id="stopBtn" disabled>
+                            <i class="bi bi-stop"></i> 停止
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let taskId = null;
+        let updateInterval = null;
+
+        async function startDemo() {
+            try {
+                const response = await fetch('/api/monitoring/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    taskId = result.task_id;
+                    document.getElementById('stopBtn').disabled = false;
+                    simulateProgress();
+                    startPolling();
+                }
+            } catch (error) {
+                console.error('启动失败:', error);
+                alert('启动失败');
+            }
+        }
+
+        async function stopDemo() {
+            if (taskId) {
+                try {
+                    await fetch(`/api/monitoring/stop/${taskId}`, { method: 'POST' });
+                    stopPolling();
+                    document.getElementById('stopBtn').disabled = true;
+                } catch (error) {
+                    console.error('停止失败:', error);
+                }
+            }
+        }
+
+        function startPolling() {
+            updateInterval = setInterval(updateProgress, 500);
+        }
+
+        function stopPolling() {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+                updateInterval = null;
+            }
+        }
+
+        async function updateProgress() {
+            if (!taskId) return;
+
+            try {
+                const response = await fetch(`/api/monitoring/progress/${taskId}`);
+                const result = await response.json();
+
+                if (result.success) {
+                    displayProgress(result.data);
+                }
+            } catch (error) {
+                console.error('更新失败:', error);
+            }
+        }
+
+        function displayProgress(data) {
+            const progress = data.progress;
+            const events = data.events;
+
+            // 更新进度条
+            const percentage = progress.percentage.toFixed(1);
+            document.getElementById('progressBar').style.width = percentage + '%';
+            document.getElementById('progressBar').textContent = percentage + '%';
+
+            // 更新状态
+            document.getElementById('currentTable').textContent = progress.current_table || '-';
+            document.getElementById('statusDisplay').textContent = progress.is_running ? '运行中' : '已完成';
+            document.getElementById('progressText').textContent =
+                `${progress.completed_items}/${progress.total_items}`;
+            document.getElementById('elapsedTime').textContent = formatTime(progress.elapsed_time);
+            document.getElementById('completedCount').textContent = progress.completed_items;
+            document.getElementById('totalCount').textContent = progress.total_items;
+            document.getElementById('eventCount').textContent = data.total_events;
+
+            // 显示ETA
+            if (progress.eta > 0 && progress.is_running) {
+                document.getElementById('etaText').textContent =
+                    `预计剩余: ${formatTime(progress.eta)}`;
+            } else {
+                document.getElementById('etaText').textContent = '';
+            }
+
+            // 更新事件日志
+            if (events && events.length > 0) {
+                const eventLog = document.getElementById('eventLog');
+                eventLog.innerHTML = events.reverse().map(event => {
+                    const time = new Date(event.timestamp).toLocaleTimeString();
+                    const cssClass = `event-${event.type.replace('_', '-')}`;
+                    return `
+                        <div class="event-item ${cssClass}">
+                            <span class="badge bg-secondary">${time}</span>
+                            <span class="badge bg-info">${event.type}</span>
+                            ${event.table_name ? `<span class="badge bg-primary">${event.table_name}</span>` : ''}
+                            <span>${event.message}</span>
+                            ${event.percentage > 0 ? `<span class="badge bg-success">${event.percentage.toFixed(1)}%</span>` : ''}
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // 如果已完成，停止轮询
+            if (!progress.is_running && progress.completed_items > 0) {
+                stopPolling();
+                document.getElementById('stopBtn').disabled = true;
+            }
+        }
+
+        function formatTime(seconds) {
+            if (seconds < 60) {
+                return seconds.toFixed(1) + '秒';
+            } else if (seconds < 3600) {
+                return (seconds / 60).toFixed(1) + '分钟';
+            } else {
+                return (seconds / 3600).toFixed(1) + '小时';
+            }
+        }
+
+        // 模拟数据生成进度（仅用于演示）
+        async function simulateProgress() {
+            if (!taskId) return;
+
+            const monitors = window.parent.progress_monitors || {};
+            const monitor = monitors[taskId]?.monitor;
+
+            if (monitor) {
+                // 模拟表生成
+                monitor.table_started('customer', 100);
+
+                for (let i = 0; i < 10; i++) {
+                    setTimeout(() => {
+                        if (monitor.is_running) {
+                            monitor.batch_completed(10, i + 1);
+                            monitor.update((i + 1) * 10, `生成批次 ${i + 1}`);
+                        }
+                    }, i * 500);
+                }
+
+                setTimeout(() => {
+                    if (monitor.is_running) {
+                        monitor.table_completed('customer', 100);
+                        monitor.complete('演示完成！');
+                    }
+                }, 5000);
+            }
+        }
+    </script>
+</body>
+</html>

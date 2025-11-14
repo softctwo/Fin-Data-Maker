@@ -58,13 +58,32 @@ Fin-Data-Maker 是一个专为金融行业设计的测试数据生成系统。�
 - 实时数据预览和质量报告
 - 无需编程即可使用所有功能
 
-### 8. 高级功能（专业版） ✨
+### 8. 数据关系可视化 🆕
+- **ER图生成**：支持Mermaid/Graphviz/PlantUML格式
+- **依赖关系图**：可视化表间依赖关系
+- **自动渲染**：可导出为PNG/SVG/PDF图片
+- **在线查看**：生成的图表可直接在线查看
+
+### 9. 表间依赖分析 🆕
+- **循环依赖检测**：自动识别循环引用问题
+- **拓扑排序**：推荐最优数据生成顺序
+- **依赖层级**：计算表的依赖深度
+- **依赖链分析**：完整的依赖路径追踪
+- **详细报告**：生成全面的依赖分析报告
+
+### 10. 实时进度监控 🆕
+- **实时进度跟踪**：监控数据生成过程
+- **进度条显示**：直观的可视化进度
+- **事件回调**：灵活的事件通知机制
+- **ETA预测**：预计剩余完成时间
+- **历史记录**：保存完整的进度历史
+
+### 11. 高级功能（专业版）
 - **用户认证系统**：安全的用户注册、登录和会话管理
 - **配置保存**：保存和重用数据生成配置
 - **历史记录**：完整的操作历史追踪和统计分析
-- **批量处理** 🆕：支持同时处理多个表，实时进度追踪和任务管理
-- **可视化图表** 🆕：数据质量多维度可视化（折线图、柱状图、饼图、雷达图）
-- **定时任务** 🆕：灵活的任务调度系统（支持一次性、每日、每周、每月执行）
+- **批量处理**：同时处理多个表（计划中）
+- **定时任务**：自动化数据生成调度（计划中）
 
 ## 快速开始
 
@@ -169,6 +188,35 @@ python examples/ddl_import_example.py
 
 # 生成SQL INSERT语句 🆕
 python tools/generate_sql_inserts.py
+
+# 可视化和依赖分析示例 🆕🎨
+python examples/visualization_example.py
+```
+
+**新功能快速体验**：
+
+```python
+# 1. 依赖关系分析
+from src.analysis.dependency_analyzer import DependencyAnalyzer
+from src.financial.schemas import create_customer_table, create_bond_table
+
+analyzer = DependencyAnalyzer([create_customer_table(), create_bond_table()])
+print(analyzer.generate_report())  # 生成分析报告
+
+# 2. ER图可视化
+from src.visualization.relationship_visualizer import RelationshipVisualizer
+
+visualizer = RelationshipVisualizer([create_customer_table(), create_bond_table()])
+visualizer.generate_mermaid('output/er_diagram.mmd')  # 生成Mermaid ER图
+
+# 3. 进度监控
+from src.core.progress_monitor import ProgressMonitor, simple_progress_bar_callback
+
+monitor = ProgressMonitor()
+monitor.add_callback(simple_progress_bar_callback)
+monitor.start(100, 'customer')
+# ... 数据生成过程 ...
+monitor.complete()
 ```
 
 ### 专业版功能亮点 ✨
@@ -233,27 +281,14 @@ Fin-Data-Maker/
 │   │   └── data_validator.py   # 数据验证器
 │   ├── output/            # 数据输出模块
 │   │   └── exporter.py    # 数据导出器
-│   ├── datasource/        # 数据源连接模块
-│   │   ├── db_connector.py      # 数据库连接器
-│   │   ├── metadata_extractor.py # 元数据提取器
-│   │   └── data_profiler.py     # 数据分析器
-│   ├── parsers/           # DDL解析模块 🆕
-│   │   └── ddl_parser.py  # SQL DDL解析器
-│   ├── web/               # Web应用模块 🆕
-│   │   ├── models.py      # 数据库模型（用户、配置、历史、任务）
-│   │   ├── auth.py        # 用户认证
-│   │   ├── batch_processor.py   # 批量任务处理器
-│   │   └── task_scheduler.py    # 定时任务调度器
+│   ├── analysis/          # 依赖分析模块 🆕
+│   │   └── dependency_analyzer.py   # 表依赖关系分析器
+│   ├── visualization/     # 可视化模块 🆕
+│   │   └── relationship_visualizer.py  # 关系图可视化器
 │   └── core/              # 核心应用模块
-│       └── app.py         # 主应用类
-├── templates/             # Web界面模板 🆕
-│   ├── index.html         # 主页（数据生成）
-│   ├── login.html         # 登录页面
-│   ├── register.html      # 注册页面
-│   ├── dashboard.html     # 数据仪表板（可视化图表）
-│   ├── batch.html         # 批量处理管理
-│   └── tasks.html         # 定时任务管理
-├── sql/                   # SQL脚本
+│       ├── app.py         # 主应用类
+│       └── progress_monitor.py  # 进度监控器 🆕
+├── sql/                   # SQL脚本 🆕
 │   ├── schema.sql         # 数据库表结构定义
 │   ├── test_data.sql      # 测试数据
 │   ├── full_setup.sql     # 完整安装脚本
@@ -265,10 +300,12 @@ Fin-Data-Maker/
 │   └── generate_sql_inserts.py  # Python数据转SQL工具
 ├── examples/              # 示例代码
 │   ├── basic_example.py   # 基础示例
-│   ├── new_entities_example.py  # 新实体示例
+│   ├── new_entities_example.py  # 新实体示例 🆕
 │   ├── custom_table_example.py  # 自定义表示例
-│   └── ddl_import_example.py    # DDL导入示例 🆕
+│   └── visualization_example.py  # 可视化和依赖分析示例 🆕
 ├── tests/                 # 单元测试
+│   ├── test_new_entities.py  # 新实体测试
+│   └── test_new_features.py  # 新功能测试 🆕
 ├── output/                # 输出目录
 ├── webapp.py              # Web应用基础版
 ├── webapp_pro.py          # Web应用专业版 🆕
@@ -524,57 +561,27 @@ class CustomRule(Rule):
 
 ## 开发计划
 
-### ✅ 已完成功能
-
-**核心功能**：
-- [x] 元数据驱动的数据生成引擎
-- [x] 8种预定义金融实体（客户、账户、交易、贷款、信用卡、债券、基金、衍生品）
-- [x] 数据库连接和元数据提取（支持5种主流数据库）
-- [x] 数据质量分析和profiling
-- [x] 多格式导出（CSV、JSON、Excel）
-- [x] **SQL DDL导入** 🆕 - 从CREATE TABLE语句导入表结构，支持：
-  - 解析标准SQL DDL语法（MySQL、PostgreSQL等）
-  - 自动映射SQL类型到系统字段类型
-  - 提取约束（主键、外键、唯一键）
-  - Web界面DDL导入功能
-  - 支持单表和多表批量导入
-
-**Web界面**：
-- [x] 基础版Web界面（快速开始）
-- [x] 专业版Web应用（完整功能）
-- [x] 用户认证系统（注册、登录、会话管理）
-- [x] 配置保存和管理
-- [x] 历史记录追踪和统计
-
-**高级功能（专业版）**：
-- [x] **批量处理系统** - 支持同时处理多个表，包括：
-  - 后台任务处理引擎
-  - 实时进度追踪
-  - 任务管理UI（创建、查看、取消、删除）
-  - 每表结果详情
-
-- [x] **数据可视化仪表板** - 多维度数据质量可视化，包括：
-  - 折线图：7天操作历史趋势
-  - 柱状图：数据质量概览
-  - 饼图：字段完整性分布
-  - 雷达图：多维质量评分
-  - 统计卡片：关键指标展示
-
-- [x] **定时任务调度** - 灵活的自动化任务系统，包括：
-  - APScheduler集成
-  - 4种调度模式（一次性、每日、每周、每月）
-  - 任务管理UI（创建、暂停、恢复、删除）
-  - 执行历史记录
-
-**工具和部署**：
-- [x] Docker Compose一键部署
-- [x] SQL脚本和测试数据
-- [x] 交互式命令行工具
-- [x] Python转SQL工具
-
-### 📋 计划中功能
-
-**数据增强**：
+- [x] ~~支持更多金融实体（债券、基金、衍生品等）~~ ✅ **已完成**
+  - ✅ 债券信息表（8种类型，15个字段）
+  - ✅ 基金信息表（9种类型，17个字段）
+  - ✅ 衍生品信息表（6种类型，18个字段）
+- [x] ~~提供SQL脚本和Docker支持~~ ✅ **已完成**
+  - ✅ 完整的SQL DDL和测试数据
+  - ✅ Docker Compose一键启动
+  - ✅ Python数据转SQL工具
+- [x] ~~增加数据关系图可视化~~ ✅ **已完成** (v2.1.0)
+  - ✅ 支持Mermaid/Graphviz/PlantUML格式
+  - ✅ ER图自动生成
+  - ✅ 依赖关系图可视化
+- [x] ~~表间依赖关系分析~~ ✅ **已完成** (v2.1.0)
+  - ✅ 循环依赖检测
+  - ✅ 拓扑排序和生成顺序推荐
+  - ✅ 依赖层级计算
+- [x] ~~实时进度监控~~ ✅ **已完成** (v2.1.0)
+  - ✅ 事件回调机制
+  - ✅ 进度条显示
+  - ✅ ETA预测
+- [ ] 支持从SQL DDL导入元数据
 - [ ] 支持增量数据生成
 - [ ] 添加更多数据质量规则
 - [ ] 支持自定义数据生成策略
