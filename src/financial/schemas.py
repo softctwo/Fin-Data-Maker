@@ -534,3 +534,455 @@ def create_credit_card_table() -> Table:
         table.add_field(field)
 
     return table
+
+
+def create_bond_table() -> Table:
+    """
+    创建债券表定义
+    包含债券信息
+    """
+    table = Table(
+        name="bond",
+        description="债券信息表",
+        primary_key="bond_id",
+    )
+
+    fields = [
+        Field(
+            name="bond_id",
+            field_type=FieldType.ID,
+            description="债券唯一标识",
+            required=True,
+            unique=True,
+            length=20,
+        ),
+        Field(
+            name="issuer_id",
+            field_type=FieldType.ID,
+            description="发行人ID（客户ID）",
+            required=True,
+            length=20,
+            reference_table="customer",
+            reference_field="customer_id",
+        ),
+        Field(
+            name="bond_code",
+            field_type=FieldType.STRING,
+            description="债券代码",
+            required=True,
+            unique=True,
+            length=10,
+        ),
+        Field(
+            name="bond_name",
+            field_type=FieldType.STRING,
+            description="债券名称",
+            required=True,
+            min_length=2,
+            max_length=100,
+        ),
+        Field(
+            name="bond_type",
+            field_type=FieldType.ENUM,
+            description="债券类型",
+            required=True,
+            enum_values=["国债", "地方政府债", "政策性金融债", "企业债", "公司债", "可转债", "短期融资券", "中期票据"],
+        ),
+        Field(
+            name="face_value",
+            field_type=FieldType.AMOUNT,
+            description="票面金额",
+            required=True,
+            min_value=100,
+            max_value=10000,
+            precision=2,
+            default_value=100,
+        ),
+        Field(
+            name="coupon_rate",
+            field_type=FieldType.DECIMAL,
+            description="票面利率（%）",
+            required=True,
+            min_value=0.5,
+            max_value=15.0,
+            precision=2,
+        ),
+        Field(
+            name="issue_price",
+            field_type=FieldType.AMOUNT,
+            description="发行价格",
+            required=True,
+            min_value=50,
+            max_value=10000,
+            precision=2,
+        ),
+        Field(
+            name="issue_amount",
+            field_type=FieldType.AMOUNT,
+            description="发行总额（万元）",
+            required=True,
+            min_value=1000,
+            max_value=10000000,
+            precision=2,
+        ),
+        Field(
+            name="issue_date",
+            field_type=FieldType.DATE,
+            description="发行日期",
+            required=True,
+        ),
+        Field(
+            name="maturity_date",
+            field_type=FieldType.DATE,
+            description="到期日期",
+            required=True,
+        ),
+        Field(
+            name="payment_frequency",
+            field_type=FieldType.ENUM,
+            description="付息频率",
+            required=True,
+            enum_values=["年付", "半年付", "季付", "月付", "到期一次还本付息"],
+        ),
+        Field(
+            name="credit_rating",
+            field_type=FieldType.ENUM,
+            description="信用评级",
+            required=True,
+            enum_values=["AAA", "AA+", "AA", "AA-", "A+", "A", "A-", "BBB+", "BBB", "BBB-"],
+        ),
+        Field(
+            name="listing_date",
+            field_type=FieldType.DATE,
+            description="上市日期",
+            required=False,
+        ),
+        Field(
+            name="status",
+            field_type=FieldType.ENUM,
+            description="债券状态",
+            required=True,
+            enum_values=["发行中", "正常交易", "停牌", "已到期", "已违约"],
+            default_value="正常交易",
+        ),
+    ]
+
+    for field in fields:
+        table.add_field(field)
+
+    return table
+
+
+def create_fund_table() -> Table:
+    """
+    创建基金表定义
+    包含基金产品信息
+    """
+    table = Table(
+        name="fund",
+        description="基金信息表",
+        primary_key="fund_id",
+    )
+
+    fields = [
+        Field(
+            name="fund_id",
+            field_type=FieldType.ID,
+            description="基金唯一标识",
+            required=True,
+            unique=True,
+            length=20,
+        ),
+        Field(
+            name="fund_code",
+            field_type=FieldType.STRING,
+            description="基金代码",
+            required=True,
+            unique=True,
+            length=10,
+        ),
+        Field(
+            name="fund_name",
+            field_type=FieldType.STRING,
+            description="基金名称",
+            required=True,
+            min_length=2,
+            max_length=100,
+        ),
+        Field(
+            name="fund_type",
+            field_type=FieldType.ENUM,
+            description="基金类型",
+            required=True,
+            enum_values=["股票型", "债券型", "混合型", "货币型", "指数型", "QDII", "ETF", "LOF", "FOF"],
+        ),
+        Field(
+            name="fund_manager",
+            field_type=FieldType.STRING,
+            description="基金管理人",
+            required=True,
+            min_length=2,
+            max_length=100,
+        ),
+        Field(
+            name="fund_manager_id",
+            field_type=FieldType.ID,
+            description="基金经理ID（客户ID）",
+            required=True,
+            length=20,
+            reference_table="customer",
+            reference_field="customer_id",
+        ),
+        Field(
+            name="custodian",
+            field_type=FieldType.STRING,
+            description="托管银行",
+            required=True,
+            min_length=2,
+            max_length=100,
+        ),
+        Field(
+            name="net_value",
+            field_type=FieldType.DECIMAL,
+            description="单位净值",
+            required=True,
+            min_value=0.1,
+            max_value=100.0,
+            precision=4,
+        ),
+        Field(
+            name="accumulated_net_value",
+            field_type=FieldType.DECIMAL,
+            description="累计净值",
+            required=True,
+            min_value=0.1,
+            max_value=1000.0,
+            precision=4,
+        ),
+        Field(
+            name="fund_size",
+            field_type=FieldType.AMOUNT,
+            description="基金规模（亿元）",
+            required=True,
+            min_value=0.01,
+            max_value=10000,
+            precision=2,
+        ),
+        Field(
+            name="establishment_date",
+            field_type=FieldType.DATE,
+            description="成立日期",
+            required=True,
+        ),
+        Field(
+            name="management_fee_rate",
+            field_type=FieldType.DECIMAL,
+            description="管理费率（%）",
+            required=True,
+            min_value=0.0,
+            max_value=3.0,
+            precision=2,
+        ),
+        Field(
+            name="custodian_fee_rate",
+            field_type=FieldType.DECIMAL,
+            description="托管费率（%）",
+            required=True,
+            min_value=0.0,
+            max_value=1.0,
+            precision=2,
+        ),
+        Field(
+            name="subscription_rate",
+            field_type=FieldType.DECIMAL,
+            description="认购费率（%）",
+            required=True,
+            min_value=0.0,
+            max_value=5.0,
+            precision=2,
+        ),
+        Field(
+            name="redemption_rate",
+            field_type=FieldType.DECIMAL,
+            description="赎回费率（%）",
+            required=True,
+            min_value=0.0,
+            max_value=5.0,
+            precision=2,
+        ),
+        Field(
+            name="risk_level",
+            field_type=FieldType.ENUM,
+            description="风险等级",
+            required=True,
+            enum_values=["低风险", "中低风险", "中等风险", "中高风险", "高风险"],
+        ),
+        Field(
+            name="status",
+            field_type=FieldType.ENUM,
+            description="基金状态",
+            required=True,
+            enum_values=["募集中", "运作中", "暂停申购", "暂停赎回", "暂停交易", "已清盘"],
+            default_value="运作中",
+        ),
+    ]
+
+    for field in fields:
+        table.add_field(field)
+
+    return table
+
+
+def create_derivative_table() -> Table:
+    """
+    创建衍生品表定义
+    包含金融衍生品信息
+    """
+    table = Table(
+        name="derivative",
+        description="金融衍生品信息表",
+        primary_key="derivative_id",
+    )
+
+    fields = [
+        Field(
+            name="derivative_id",
+            field_type=FieldType.ID,
+            description="衍生品唯一标识",
+            required=True,
+            unique=True,
+            length=20,
+        ),
+        Field(
+            name="contract_code",
+            field_type=FieldType.STRING,
+            description="合约代码",
+            required=True,
+            unique=True,
+            length=20,
+        ),
+        Field(
+            name="contract_name",
+            field_type=FieldType.STRING,
+            description="合约名称",
+            required=True,
+            min_length=2,
+            max_length=100,
+        ),
+        Field(
+            name="derivative_type",
+            field_type=FieldType.ENUM,
+            description="衍生品类型",
+            required=True,
+            enum_values=["期货", "期权", "互换", "远期", "结构化产品", "权证"],
+        ),
+        Field(
+            name="underlying_asset_type",
+            field_type=FieldType.ENUM,
+            description="标的资产类型",
+            required=True,
+            enum_values=["股票", "股指", "债券", "商品", "货币", "利率", "信用"],
+        ),
+        Field(
+            name="underlying_asset_code",
+            field_type=FieldType.STRING,
+            description="标的资产代码",
+            required=True,
+            max_length=20,
+        ),
+        Field(
+            name="underlying_asset_name",
+            field_type=FieldType.STRING,
+            description="标的资产名称",
+            required=True,
+            min_length=2,
+            max_length=100,
+        ),
+        Field(
+            name="contract_size",
+            field_type=FieldType.DECIMAL,
+            description="合约乘数/规模",
+            required=True,
+            min_value=1,
+            max_value=1000000,
+            precision=2,
+        ),
+        Field(
+            name="strike_price",
+            field_type=FieldType.DECIMAL,
+            description="行权价格/执行价格",
+            required=False,
+            min_value=0.01,
+            max_value=1000000,
+            precision=2,
+        ),
+        Field(
+            name="option_type",
+            field_type=FieldType.ENUM,
+            description="期权类型",
+            required=False,
+            enum_values=["看涨", "看跌", "不适用"],
+        ),
+        Field(
+            name="contract_unit",
+            field_type=FieldType.STRING,
+            description="合约单位",
+            required=True,
+            max_length=20,
+        ),
+        Field(
+            name="listing_date",
+            field_type=FieldType.DATE,
+            description="上市日期",
+            required=True,
+        ),
+        Field(
+            name="expiry_date",
+            field_type=FieldType.DATE,
+            description="到期日期",
+            required=True,
+        ),
+        Field(
+            name="delivery_month",
+            field_type=FieldType.STRING,
+            description="交割月份",
+            required=False,
+            length=6,
+        ),
+        Field(
+            name="settlement_method",
+            field_type=FieldType.ENUM,
+            description="结算方式",
+            required=True,
+            enum_values=["实物交割", "现金交割", "混合交割"],
+        ),
+        Field(
+            name="margin_rate",
+            field_type=FieldType.DECIMAL,
+            description="保证金比例（%）",
+            required=True,
+            min_value=5.0,
+            max_value=100.0,
+            precision=2,
+        ),
+        Field(
+            name="exchange",
+            field_type=FieldType.ENUM,
+            description="交易所",
+            required=True,
+            enum_values=["上海期货交易所", "大连商品交易所", "郑州商品交易所", "中国金融期货交易所", "上海证券交易所", "深圳证券交易所"],
+        ),
+        Field(
+            name="status",
+            field_type=FieldType.ENUM,
+            description="合约状态",
+            required=True,
+            enum_values=["交易中", "停牌", "已到期", "已交割"],
+            default_value="交易中",
+        ),
+    ]
+
+    for field in fields:
+        table.add_field(field)
+
+    return table

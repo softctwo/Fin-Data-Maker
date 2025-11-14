@@ -24,11 +24,17 @@ Fin-Data-Maker 是一个专为金融行业设计的测试数据生成系统。�
 - **引用完整性规则**：外键引用验证
 
 ### 3. 预定义金融实体
+**基础实体**:
 - 客户信息（Customer）
 - 账户信息（Account）
 - 交易流水（Transaction）
 - 贷款信息（Loan）
 - 信用卡信息（Credit Card）
+
+**新增实体** 🆕:
+- **债券信息（Bond）** - 支持8种债券类型，15个字段
+- **基金信息（Fund）** - 支持9种基金类型，17个字段
+- **衍生品信息（Derivative）** - 支持6种衍生品类型，18个字段
 
 ### 4. 多格式导出
 - CSV格式（支持UTF-8 BOM，Excel兼容）
@@ -62,59 +68,47 @@ Fin-Data-Maker 是一个专为金融行业设计的测试数据生成系统。�
 
 ## 快速开始
 
-### 方式1：使用Web界面（推荐）
+### 方式一：使用Docker（推荐）🐳
 
-**基础版（无需认证）：**
+最快速的方式是使用Docker Compose启动MySQL测试环境：
+
 ```bash
-# 安装依赖
-pip install -r requirements.txt
+# 启动MySQL + Adminer
+docker-compose up -d
 
-# 启动基础版Web服务器
-python webapp.py
-
-# 在浏览器中打开
-http://localhost:5000
+# 访问Adminer Web管理界面
+# http://localhost:8080
+# 服务器: mysql, 用户: root, 密码: findata123
 ```
 
-**专业版（带用户认证和高级功能）：**
+SQL脚本会自动导入，立即可用！详见 [Docker使用指南](docker/README.md)
+
+### 方式二：使用SQL脚本
+
+如果已有MySQL数据库，可以直接导入SQL脚本：
+
 ```bash
-# 安装依赖
-pip install -r requirements.txt
+# 创建数据库
+mysql -u root -p -e "CREATE DATABASE fin_data_maker CHARACTER SET utf8mb4;"
 
-# 启动专业版Web服务器
-python webapp_pro.py
+# 导入表结构和测试数据
+mysql -u root -p fin_data_maker < sql/full_setup.sql
 
-# 在浏览器中打开
-http://localhost:5000
-
-# 使用默认管理员账户登录
-用户名：admin
-密码：admin123
+# 验证数据
+mysql -u root -p fin_data_maker -e "SELECT COUNT(*) FROM bond;"
 ```
 
-**专业版额外功能**：
-- 用户认证系统（注册/登录/登出）
-- 配置保存和管理
-- 历史记录查看和统计
-- 详见 [高级功能指南](docs/ADVANCED_FEATURES.md)
+详见 [SQL脚本使用说明](sql/README.md)
 
-然后按照界面引导完成操作：
-1. 连接数据源
-2. 选择表
-3. 分析数据质量（可选）
-4. 生成并导出数据
+### 方式三：使用Python生成数据
 
-详细使用说明请查看 [Web界面使用指南](docs/WEB_GUIDE.md)
-
-### 方式2：使用命令行或编程
-
-### 安装依赖
+#### 安装依赖
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 基础使用示例
+#### 基础使用示例
 
 ```python
 from src.core.app import DataMakerApp
@@ -157,11 +151,14 @@ python cli.py --interactive
 # 基础示例：生成客户、账户、交易数据
 python examples/basic_example.py
 
+# 新增实体示例：生成债券、基金、衍生品数据 🆕
+python examples/new_entities_example.py
+
 # 自定义表示例：创建保险单数据
 python examples/custom_table_example.py
 
-# 数据源连接示例：从数据库提取表结构并生成数据
-python examples/datasource_example.py
+# 生成SQL INSERT语句 🆕
+python tools/generate_sql_inserts.py
 ```
 
 ## 项目结构
@@ -182,42 +179,29 @@ Fin-Data-Maker/
 │   │   ├── field_generator.py   # 字段生成器
 │   │   └── table_generator.py   # 表生成器
 │   ├── financial/         # 金融业务模块
-│   │   └── schemas.py     # 预定义金融实体
-│   ├── datasource/        # 数据源连接模块
-│   │   ├── db_connector.py       # 数据库连接器
-│   │   ├── metadata_extractor.py # 元数据提取器
-│   │   ├── data_profiler.py      # 数据质量分析器
-│   │   └── config_manager.py     # 配置管理器
-│   ├── web/               # Web应用模块（专业版）
-│   │   ├── __init__.py    # 模块初始化
-│   │   ├── models.py      # 数据库模型（User, Config, History, ScheduledTask）
-│   │   └── auth.py        # 认证模块（Flask-Login）
+│   │   └── schemas.py     # 预定义金融实体（8个表）
 │   ├── validators/        # 数据验证模块
 │   │   └── data_validator.py   # 数据验证器
 │   ├── output/            # 数据输出模块
 │   │   └── exporter.py    # 数据导出器
 │   └── core/              # 核心应用模块
 │       └── app.py         # 主应用类
+├── sql/                   # SQL脚本 🆕
+│   ├── schema.sql         # 数据库表结构定义
+│   ├── test_data.sql      # 测试数据
+│   ├── full_setup.sql     # 完整安装脚本
+│   └── README.md          # SQL使用说明
+├── docker/                # Docker配置 🆕
+│   └── README.md          # Docker使用指南
+├── tools/                 # 工具脚本 🆕
+│   └── generate_sql_inserts.py  # Python数据转SQL工具
 ├── examples/              # 示例代码
 │   ├── basic_example.py   # 基础示例
-│   ├── custom_table_example.py  # 自定义表示例
-│   └── datasource_example.py    # 数据源连接示例
-├── config/                # 配置文件目录
-│   └── datasources.example.yaml # 数据源配置示例
-├── templates/             # Web模板
-│   ├── index.html         # Web界面主页
-│   ├── login.html         # 登录页面（专业版）
-│   └── register.html      # 注册页面（专业版）
-├── static/                # 静态资源
-│   └── app.js             # 前端JavaScript
-├── docs/                  # 文档目录
-│   ├── WEB_GUIDE.md       # Web界面使用指南
-│   └── ADVANCED_FEATURES.md  # 高级功能指南（专业版）
+│   ├── new_entities_example.py  # 新实体示例 🆕
+│   └── custom_table_example.py  # 自定义表示例
 ├── tests/                 # 单元测试
 ├── output/                # 输出目录
-├── webapp.py              # Web应用入口（基础版）
-├── webapp_pro.py          # Web应用入口（专业版，带认证）
-├── cli.py                 # 交互式命令行工具
+├── docker-compose.yml     # Docker Compose配置 🆕
 ├── requirements.txt       # 项目依赖
 └── setup.py              # 安装配置
 ```
