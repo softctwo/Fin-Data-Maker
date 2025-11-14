@@ -1,0 +1,11 @@
+graph LR
+
+  account["account"]
+  bond["bond"]
+  customer["customer"]
+  derivative["derivative"]
+  fund["fund"]
+
+  account -->|customer_id| customer
+  bond -->|issuer_id| customer
+  fund -->|fund_manager_id| customer

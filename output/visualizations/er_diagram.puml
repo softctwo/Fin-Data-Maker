@@ -1,0 +1,100 @@
+@startuml
+
+skinparam linetype ortho
+skinparam class {
+  BackgroundColor White
+  BorderColor Black
+  ArrowColor Black
+}
+
+entity account {
+  * account_id : VARCHAR <<PK>>
+  * customer_id : VARCHAR <<FK>>
+  * account_no : VARCHAR
+  * account_type : ENUM
+  * currency : ENUM
+  * balance : DECIMAL
+  * available_balance : DECIMAL
+  * open_date : DATE
+  * branch_code : VARCHAR
+  * status : ENUM
+}
+
+entity bond {
+  * bond_id : VARCHAR <<PK>>
+  * issuer_id : VARCHAR <<FK>>
+  * bond_code : VARCHAR
+  * bond_name : VARCHAR
+  * bond_type : ENUM
+  * face_value : DECIMAL
+  * coupon_rate : DECIMAL
+  * issue_price : DECIMAL
+  * issue_amount : DECIMAL
+  * issue_date : DATE
+  * maturity_date : DATE
+  * payment_frequency : ENUM
+  * credit_rating : ENUM
+    listing_date : DATE
+  * status : ENUM
+}
+
+entity customer {
+  * customer_id : VARCHAR <<PK>>
+  * customer_name : VARCHAR
+  * id_card_no : VARCHAR
+  * gender : ENUM
+  * birth_date : DATE
+  * phone : VARCHAR
+    email : VARCHAR
+    address : VARCHAR
+  * customer_type : ENUM
+  * customer_level : ENUM
+  * registration_date : DATE
+  * status : ENUM
+}
+
+entity derivative {
+  * derivative_id : VARCHAR <<PK>>
+  * contract_code : VARCHAR
+  * contract_name : VARCHAR
+  * derivative_type : ENUM
+  * underlying_asset_type : ENUM
+  * underlying_asset_code : VARCHAR
+  * underlying_asset_name : VARCHAR
+  * contract_size : DECIMAL
+    strike_price : DECIMAL
+    option_type : ENUM
+  * contract_unit : VARCHAR
+  * listing_date : DATE
+  * expiry_date : DATE
+    delivery_month : VARCHAR
+  * settlement_method : ENUM
+  * margin_rate : DECIMAL
+  * exchange : ENUM
+  * status : ENUM
+}
+
+entity fund {
+  * fund_id : VARCHAR <<PK>>
+  * fund_code : VARCHAR
+  * fund_name : VARCHAR
+  * fund_type : ENUM
+  * fund_manager : VARCHAR
+  * fund_manager_id : VARCHAR <<FK>>
+  * custodian : VARCHAR
+  * net_value : DECIMAL
+  * accumulated_net_value : DECIMAL
+  * fund_size : DECIMAL
+  * establishment_date : DATE
+  * management_fee_rate : DECIMAL
+  * custodian_fee_rate : DECIMAL
+  * subscription_rate : DECIMAL
+  * redemption_rate : DECIMAL
+  * risk_level : ENUM
+  * status : ENUM
+}
+
+customer ||--o{ account
+customer ||--o{ bond
+customer ||--o{ fund
+@enduml

@@ -133,6 +133,11 @@ class FieldGenerator(BaseGenerator):
             # 简单实现，实际可使用rstr等库
             return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
 
+        # 修复：对于长度小于5的字符串，使用random.choices而不是faker.text
+        # 因为faker.text()要求至少5个字符
+        if length < 5:
+            return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
+
         return self.faker.text(max_nb_chars=length)[:length]
 
     def _generate_integer(self, field: Field) -> int:

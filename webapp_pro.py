@@ -26,6 +26,21 @@ from src.datasource.data_profiler import DataProfiler
 from src.core.app import DataMakerApp
 from src.visualization.relationship_graph import RelationshipGraphGenerator
 
+# 导入新增功能 (v2.1.0)
+from src.analysis.dependency_analyzer import DependencyAnalyzer
+from src.visualization.relationship_visualizer import RelationshipVisualizer, VisualizationFormat
+from src.core.progress_monitor import ProgressMonitor, ProgressEvent
+from src.financial.schemas import (
+    create_customer_table,
+    create_account_table,
+    create_transaction_table,
+    create_loan_table,
+    create_credit_card_table,
+    create_bond_table,
+    create_fund_table,
+    create_derivative_table,
+)
+
 # 创建Flask应用
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
@@ -1504,6 +1519,390 @@ def test_connection():
             'success': False,
             'message': f'连接失败: {str(e)}'
         }), 400
+
+
+# ============ 依赖分析API (v2.1.0) ============
+
+@app.route('/analysis/dependency')
+@login_required
+def dependency_analysis_page():
+    """依赖关系分析页面"""
+    return render_template('dependency_analysis.html')
+
+
+@app.route('/api/analysis/tables', methods=['GET'])
+@login_required
+def get_available_tables():
+    """获取可用的表列表"""
+    try:
+        # 获取所有预定义的表
+        tables = [
+            {'name': 'customer', 'description': '客户信息表'},
+            {'name': 'account', 'description': '账户信息表'},
+            {'name': 'transaction', 'description': '交易流水表'},
+            {'name': 'loan', 'description': '贷款信息表'},
+            {'name': 'credit_card', 'description': '信用卡信息表'},
+            {'name': 'bond', 'description': '债券信息表'},
+            {'name': 'fund', 'description': '基金信息表'},
+            {'name': 'derivative', 'description': '衍生品信息表'},
+        ]
+
+        return jsonify({
+            'success': True,
+            'data': tables
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/analysis/dependency', methods=['POST'])
+@login_required
+def analyze_dependency():
+    """分析表依赖关系"""
+    try:
+        data = request.json
+        selected_tables = data.get('tables', [])
+
+        if not selected_tables:
+            return jsonify({'success': False, 'message': '请选择至少一个表'}), 400
+
+        # 创建表对象
+        table_creators = {
+            'customer': create_customer_table,
+            'account': create_account_table,
+            'transaction': create_transaction_table,
+            'loan': create_loan_table,
+            'credit_card': create_credit_card_table,
+            'bond': create_bond_table,
+            'fund': create_fund_table,
+            'derivative': create_derivative_table,
+        }
+
+        tables = []
+        for table_name in selected_tables:
+            if table_name in table_creators:
+                tables.append(table_creators[table_name]())
+
+        # 创建分析器
+        analyzer = DependencyAnalyzer(tables)
+
+        # 检测循环依赖
+        cycles = analyzer.detect_cycles()
+        has_cycles = len(cycles) > 0
+
+        # 获取生成顺序
+        try:
+            generation_order = analyzer.get_generation_order()
+            can_generate = True
+        except ValueError:
+            generation_order = []
+            can_generate = False
+
+        # 获取依赖层级
+        try:
+            levels = analyzer.get_dependency_levels()
+        except ValueError:
+            levels = {}
+
+        # 获取根表和叶子表
+        root_tables = analyzer.get_root_tables()
+        leaf_tables = analyzer.get_leaf_tables()
+
+        # 构建依赖关系边列表
+        edges = []
+        for edge in analyzer.graph.edges:
+            edges.append({
+                'from': edge.from_table,
+                'to': edge.to_table,
+                'field': edge.field_name,
+                'reference': edge.reference_field
+            })
+
+        # 记录历史
+        add_history('dependency_analysis', details={
+            'tables': selected_tables,
+            'has_cycles': has_cycles
+        })
+
+        return jsonify({
+            'success': True,
+            'data': {
+                'has_cycles': has_cycles,
+                'cycles': [{'cycle': c.cycle} for c in cycles],
+                'generation_order': generation_order,
+                'can_generate': can_generate,
+                'dependency_levels': levels,
+                'root_tables': root_tables,
+                'leaf_tables': leaf_tables,
+                'edges': edges,
+                'report': analyzer.generate_report()
+            }
+        })
+
+    except Exception as e:
+        add_history('dependency_analysis', status='failed', details={'error': str(e)})
+        return jsonify({
+            'success': False,
+            'message': f'分析失败: {str(e)}',
+            'trace': traceback.format_exc()
+        }), 500
+
+
+# ============ ER图可视化API (v2.1.0) ============
+
+@app.route('/visualization/er-diagram')
+@login_required
+def er_diagram_page():
+    """ER图可视化页面"""
+    return render_template('er_diagram.html')
+
+
+@app.route('/api/visualization/er-diagram', methods=['POST'])
+@login_required
+def generate_er_diagram():
+    """生成ER图"""
+    try:
+        data = request.json
+        selected_tables = data.get('tables', [])
+        format_type = data.get('format', 'mermaid')  # mermaid, dot, plantuml
+        show_fields = data.get('show_fields', True)
+        show_types = data.get('show_types', True)
+
+        if not selected_tables:
+            return jsonify({'success': False, 'message': '请选择至少一个表'}), 400
+
+        # 创建表对象
+        table_creators = {
+            'customer': create_customer_table,
+            'account': create_account_table,
+            'transaction': create_transaction_table,
+            'loan': create_loan_table,
+            'credit_card': create_credit_card_table,
+            'bond': create_bond_table,
+            'fund': create_fund_table,
+            'derivative': create_derivative_table,
+        }
+
+        tables = []
+        for table_name in selected_tables:
+            if table_name in table_creators:
+                tables.append(table_creators[table_name]())
+
+        # 创建可视化器
+        visualizer = RelationshipVisualizer(tables)
+
+        # 生成ER图
+        if format_type == 'mermaid':
+            content = visualizer.generate_mermaid(
+                show_fields=show_fields,
+                show_field_types=show_types
+            )
+        elif format_type == 'dot':
+            content = visualizer.generate_dot(
+                show_fields=show_fields,
+                show_field_types=show_types,
+                highlight_keys=True
+            )
+        elif format_type == 'plantuml':
+            content = visualizer.generate_plantuml(
+                show_fields=show_fields,
+                show_field_types=show_types
+            )
+        else:
+            return jsonify({'success': False, 'message': f'不支持的格式: {format_type}'}), 400
+
+        # 生成依赖关系图
+        dep_diagram = visualizer.generate_dependency_diagram(
+            format=VisualizationFormat.MERMAID
+        )
+
+        # 记录历史
+        add_history('er_visualization', details={
+            'tables': selected_tables,
+            'format': format_type
+        })
+
+        return jsonify({
+            'success': True,
+            'data': {
+                'er_diagram': content,
+                'dependency_diagram': dep_diagram,
+                'format': format_type
+            }
+        })
+
+    except Exception as e:
+        add_history('er_visualization', status='failed', details={'error': str(e)})
+        return jsonify({
+            'success': False,
+            'message': f'生成失败: {str(e)}',
+            'trace': traceback.format_exc()
+        }), 500
+
+
+@app.route('/api/visualization/download', methods=['POST'])
+@login_required
+def download_diagram():
+    """下载图表文件"""
+    try:
+        data = request.json
+        content = data.get('content')
+        format_type = data.get('format', 'mermaid')
+
+        if not content:
+            return jsonify({'success': False, 'message': '内容为空'}), 400
+
+        # 确定文件扩展名
+        ext_map = {
+            'mermaid': 'mmd',
+            'dot': 'dot',
+            'plantuml': 'puml'
+        }
+        ext = ext_map.get(format_type, 'txt')
+
+        # 创建临时文件
+        temp_file = tempfile.NamedTemporaryFile(
+            mode='w',
+            suffix=f'.{ext}',
+            delete=False,
+            encoding='utf-8'
+        )
+        temp_file.write(content)
+        temp_file.close()
+
+        # 发送文件
+        return send_file(
+            temp_file.name,
+            as_attachment=True,
+            download_name=f'er_diagram.{ext}',
+            mimetype='text/plain'
+        )
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'下载失败: {str(e)}'
+        }), 500
+
+
+# ============ 进度监控API (v2.1.0) ============
+
+# 全局进度监控器存储
+progress_monitors = {}
+
+
+@app.route('/monitoring/progress')
+@login_required
+def progress_monitoring_page():
+    """进度监控页面"""
+    return render_template('progress_monitoring.html')
+
+
+@app.route('/api/monitoring/start', methods=['POST'])
+@login_required
+def start_monitoring():
+    """开始进度监控"""
+    try:
+        data = request.json
+        task_id = data.get('task_id', f'task_{current_user.id}_{datetime.now().timestamp()}')
+
+        # 创建进度监控器
+        monitor = ProgressMonitor()
+
+        # 存储事件历史用于Web显示
+        events_history = []
+
+        def web_callback(event: ProgressEvent):
+            """Web回调函数，将事件存储到历史记录"""
+            events_history.append({
+                'type': event.event_type.value,
+                'timestamp': event.timestamp.isoformat(),
+                'table_name': event.table_name,
+                'current': event.current,
+                'total': event.total,
+                'percentage': event.percentage,
+                'message': event.message,
+                'elapsed_time': event.elapsed_time,
+                'eta': event.eta,
+                'metadata': event.metadata
+            })
+
+        monitor.add_callback(web_callback)
+
+        # 存储监控器和事件历史
+        progress_monitors[task_id] = {
+            'monitor': monitor,
+            'events': events_history
+        }
+
+        return jsonify({
+            'success': True,
+            'task_id': task_id,
+            'message': '监控已启动'
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'启动失败: {str(e)}'
+        }), 500
+
+
+@app.route('/api/monitoring/progress/<task_id>', methods=['GET'])
+@login_required
+def get_progress(task_id):
+    """获取进度信息"""
+    try:
+        if task_id not in progress_monitors:
+            return jsonify({'success': False, 'message': '任务不存在'}), 404
+
+        monitor_data = progress_monitors[task_id]
+        monitor = monitor_data['monitor']
+        events = monitor_data['events']
+
+        # 获取当前进度
+        current_progress = monitor.get_current_progress()
+
+        return jsonify({
+            'success': True,
+            'data': {
+                'progress': current_progress,
+                'events': events[-50:],  # 只返回最近50个事件
+                'total_events': len(events)
+            }
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'获取进度失败: {str(e)}'
+        }), 500
+
+
+@app.route('/api/monitoring/stop/<task_id>', methods=['POST'])
+@login_required
+def stop_monitoring(task_id):
+    """停止进度监控"""
+    try:
+        if task_id not in progress_monitors:
+            return jsonify({'success': False, 'message': '任务不存在'}), 404
+
+        monitor_data = progress_monitors[task_id]
+        monitor = monitor_data['monitor']
+
+        if monitor.is_running:
+            monitor.cancel()
+
+        return jsonify({
+            'success': True,
+            'message': '监控已停止'
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'停止失败: {str(e)}'
+        }), 500
 
 
 # 继续导入原webapp.py中的其他API接口...
