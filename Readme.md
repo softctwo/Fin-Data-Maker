@@ -52,20 +52,51 @@ Fin-Data-Maker 是一个专为金融行业设计的测试数据生成系统。�
 - 实时数据预览和质量报告
 - 无需编程即可使用所有功能
 
+### 8. 高级功能（专业版）
+- **用户认证系统**：安全的用户注册、登录和会话管理
+- **配置保存**：保存和重用数据生成配置
+- **历史记录**：完整的操作历史追踪和统计分析
+- **批量处理**：同时处理多个表（计划中）
+- **可视化图表**：数据质量可视化展示（计划中）
+- **定时任务**：自动化数据生成调度（计划中）
+
 ## 快速开始
 
 ### 方式1：使用Web界面（推荐）
 
+**基础版（无需认证）：**
 ```bash
 # 安装依赖
 pip install -r requirements.txt
 
-# 启动Web服务器
+# 启动基础版Web服务器
 python webapp.py
 
 # 在浏览器中打开
 http://localhost:5000
 ```
+
+**专业版（带用户认证和高级功能）：**
+```bash
+# 安装依赖
+pip install -r requirements.txt
+
+# 启动专业版Web服务器
+python webapp_pro.py
+
+# 在浏览器中打开
+http://localhost:5000
+
+# 使用默认管理员账户登录
+用户名：admin
+密码：admin123
+```
+
+**专业版额外功能**：
+- 用户认证系统（注册/登录/登出）
+- 配置保存和管理
+- 历史记录查看和统计
+- 详见 [高级功能指南](docs/ADVANCED_FEATURES.md)
 
 然后按照界面引导完成操作：
 1. 连接数据源
@@ -114,8 +145,11 @@ account_data, _ = app.generate_with_relations(
 ### 运行示例
 
 ```bash
-# Web界面（推荐）
+# Web界面基础版（推荐）
 python webapp.py
+
+# Web界面专业版（带认证和高级功能）
+python webapp_pro.py
 
 # 交互式命令行工具
 python cli.py --interactive
@@ -149,11 +183,15 @@ Fin-Data-Maker/
 │   │   └── table_generator.py   # 表生成器
 │   ├── financial/         # 金融业务模块
 │   │   └── schemas.py     # 预定义金融实体
-│   ├── datasource/        # 数据源连接模块（新增）
+│   ├── datasource/        # 数据源连接模块
 │   │   ├── db_connector.py       # 数据库连接器
 │   │   ├── metadata_extractor.py # 元数据提取器
 │   │   ├── data_profiler.py      # 数据质量分析器
 │   │   └── config_manager.py     # 配置管理器
+│   ├── web/               # Web应用模块（专业版）
+│   │   ├── __init__.py    # 模块初始化
+│   │   ├── models.py      # 数据库模型（User, Config, History, ScheduledTask）
+│   │   └── auth.py        # 认证模块（Flask-Login）
 │   ├── validators/        # 数据验证模块
 │   │   └── data_validator.py   # 数据验证器
 │   ├── output/            # 数据输出模块
@@ -163,18 +201,22 @@ Fin-Data-Maker/
 ├── examples/              # 示例代码
 │   ├── basic_example.py   # 基础示例
 │   ├── custom_table_example.py  # 自定义表示例
-│   └── datasource_example.py    # 数据源连接示例（新增）
+│   └── datasource_example.py    # 数据源连接示例
 ├── config/                # 配置文件目录
 │   └── datasources.example.yaml # 数据源配置示例
-├── templates/             # Web模板（新增）
-│   └── index.html         # Web界面主页
-├── static/                # 静态资源（新增）
+├── templates/             # Web模板
+│   ├── index.html         # Web界面主页
+│   ├── login.html         # 登录页面（专业版）
+│   └── register.html      # 注册页面（专业版）
+├── static/                # 静态资源
 │   └── app.js             # 前端JavaScript
-├── docs/                  # 文档目录（新增）
-│   └── WEB_GUIDE.md       # Web界面使用指南
+├── docs/                  # 文档目录
+│   ├── WEB_GUIDE.md       # Web界面使用指南
+│   └── ADVANCED_FEATURES.md  # 高级功能指南（专业版）
 ├── tests/                 # 单元测试
 ├── output/                # 输出目录
-├── webapp.py              # Web应用入口（新增）
+├── webapp.py              # Web应用入口（基础版）
+├── webapp_pro.py          # Web应用入口（专业版，带认证）
 ├── cli.py                 # 交互式命令行工具
 ├── requirements.txt       # 项目依赖
 └── setup.py              # 安装配置
@@ -426,13 +468,26 @@ class CustomRule(Rule):
 
 ## 开发计划
 
+**已完成**：
+- [x] 提供Web界面
+- [x] 用户认证系统
+- [x] 配置保存和管理
+- [x] 历史记录追踪
+
+**进行中**：
+- [ ] 批量处理多个表
+- [ ] 数据质量可视化图表
+- [ ] 定时任务调度
+
+**计划中**：
 - [ ] 支持更多金融实体（债券、基金、衍生品等）
 - [ ] 增加数据关系图可视化
 - [ ] 支持从SQL DDL导入元数据
-- [ ] 提供Web界面
 - [ ] 支持增量数据生成
 - [ ] 添加更多数据质量规则
 - [ ] 支持自定义数据生成策略
+- [ ] API令牌认证
+- [ ] 团队协作功能
 
 ## 许可证
 
