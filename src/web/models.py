@@ -26,6 +26,7 @@ class User(UserMixin, db.Model):
     configs = db.relationship('Config', backref='user', lazy=True, cascade='all, delete-orphan')
     histories = db.relationship('History', backref='user', lazy=True, cascade='all, delete-orphan')
     tasks = db.relationship('ScheduledTask', backref='user', lazy=True, cascade='all, delete-orphan')
+    batch_tasks = db.relationship('BatchTask', backref='user', lazy=True, cascade='all, delete-orphan')
 
     def set_password(self, password):
         """设置密码"""
@@ -129,5 +130,49 @@ class ScheduledTask(db.Model):
             'status': self.status,
             'last_run': self.last_run.isoformat() if self.last_run else None,
             'next_run': self.next_run.isoformat() if self.next_run else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class BatchTask(db.Model):
+    """批量任务模型"""
+    __tablename__ = 'batch_tasks'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text)
+    db_config = db.Column(db.Text, nullable=False)  # JSON格式的数据库配置
+    tables = db.Column(db.Text, nullable=False)  # JSON格式的表列表
+    generation_config = db.Column(db.Text)  # JSON格式的生成配置
+    status = db.Column(db.String(20), default='pending')  # pending, running, completed, failed, cancelled
+    total_tables = db.Column(db.Integer, default=0)
+    completed_tables = db.Column(db.Integer, default=0)
+    failed_tables = db.Column(db.Integer, default=0)
+    progress = db.Column(db.Integer, default=0)  # 进度百分比 0-100
+    results = db.Column(db.Text)  # JSON格式的详细结果
+    error_message = db.Column(db.Text)
+    started_at = db.Column(db.DateTime)
+    completed_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        """转换为字典"""
+        return {
+            'id': self.id,
+            'name': self.name,
+            'description': self.description,
+            'db_config': json.loads(self.db_config) if self.db_config else {},
+            'tables': json.loads(self.tables) if self.tables else [],
+            'generation_config': json.loads(self.generation_config) if self.generation_config else {},
+            'status': self.status,
+            'total_tables': self.total_tables,
+            'completed_tables': self.completed_tables,
+            'failed_tables': self.failed_tables,
+            'progress': self.progress,
+            'results': json.loads(self.results) if self.results else {},
+            'error_message': self.error_message,
+            'started_at': self.started_at.isoformat() if self.started_at else None,
+            'completed_at': self.completed_at.isoformat() if self.completed_at else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
         }
