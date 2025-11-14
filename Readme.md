@@ -46,7 +46,36 @@ Fin-Data-Maker 是一个专为金融行业设计的测试数据生成系统。�
 - 数据质量分析和profiling
 - 根据现有数据特征生成测试数据
 
+### 7. Web界面（NEW!）
+- 现代化的图形用户界面
+- 4步向导式操作流程
+- 实时数据预览和质量报告
+- 无需编程即可使用所有功能
+
 ## 快速开始
+
+### 方式1：使用Web界面（推荐）
+
+```bash
+# 安装依赖
+pip install -r requirements.txt
+
+# 启动Web服务器
+python webapp.py
+
+# 在浏览器中打开
+http://localhost:5000
+```
+
+然后按照界面引导完成操作：
+1. 连接数据源
+2. 选择表
+3. 分析数据质量（可选）
+4. 生成并导出数据
+
+详细使用说明请查看 [Web界面使用指南](docs/WEB_GUIDE.md)
+
+### 方式2：使用命令行或编程
 
 ### 安装依赖
 
@@ -85,6 +114,12 @@ account_data, _ = app.generate_with_relations(
 ### 运行示例
 
 ```bash
+# Web界面（推荐）
+python webapp.py
+
+# 交互式命令行工具
+python cli.py --interactive
+
 # 基础示例：生成客户、账户、交易数据
 python examples/basic_example.py
 
@@ -93,9 +128,6 @@ python examples/custom_table_example.py
 
 # 数据源连接示例：从数据库提取表结构并生成数据
 python examples/datasource_example.py
-
-# 交互式命令行工具
-python cli.py --interactive
 ```
 
 ## 项目结构
@@ -132,11 +164,18 @@ Fin-Data-Maker/
 │   ├── basic_example.py   # 基础示例
 │   ├── custom_table_example.py  # 自定义表示例
 │   └── datasource_example.py    # 数据源连接示例（新增）
-├── config/                # 配置文件目录（新增）
+├── config/                # 配置文件目录
 │   └── datasources.example.yaml # 数据源配置示例
+├── templates/             # Web模板（新增）
+│   └── index.html         # Web界面主页
+├── static/                # 静态资源（新增）
+│   └── app.js             # 前端JavaScript
+├── docs/                  # 文档目录（新增）
+│   └── WEB_GUIDE.md       # Web界面使用指南
 ├── tests/                 # 单元测试
 ├── output/                # 输出目录
-├── cli.py                 # 交互式命令行工具（新增）
+├── webapp.py              # Web应用入口（新增）
+├── cli.py                 # 交互式命令行工具
 ├── requirements.txt       # 项目依赖
 └── setup.py              # 安装配置
 ```
