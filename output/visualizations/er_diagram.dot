@@ -1,0 +1,25 @@
+digraph ER {
+  rankdir=LR;
+  node [shape=record, fontname="Arial"];
+  edge [fontname="Arial", fontsize=10];
+
+  // Table: account
+  account [label="{<table>表名: account|账户信息表}|{🔑 account_id: id *\l🔗 customer_id: id *\laccount_no: bank_card *\laccount_type: enum *\lcurrency: enum *\lbalance: amount *\lavailable_balance: amount *\lopen_date: date *\lbranch_code: string *\lstatus: enum *\l}"];
+
+  // Table: bond
+  bond [label="{<table>表名: bond|债券信息表}|{🔑 bond_id: id *\l🔗 issuer_id: id *\lbond_code: string *\lbond_name: string *\lbond_type: enum *\lface_value: amount *\lcoupon_rate: decimal *\lissue_price: amount *\lissue_amount: amount *\lissue_date: date *\lmaturity_date: date *\lpayment_frequency: enum *\lcredit_rating: enum *\llisting_date: date\lstatus: enum *\l}"];
+
+  // Table: customer
+  customer [label="{<table>表名: customer|客户信息表}|{🔑 customer_id: id *\lcustomer_name: string *\lid_card_no: id_card *\lgender: enum *\lbirth_date: date *\lphone: phone *\lemail: email\laddress: string\lcustomer_type: enum *\lcustomer_level: enum *\lregistration_date: date *\lstatus: enum *\l}"];
+
+  // Table: derivative
+  derivative [label="{<table>表名: derivative|金融衍生品信息表}|{🔑 derivative_id: id *\lcontract_code: string *\lcontract_name: string *\lderivative_type: enum *\lunderlying_asset_type: enum *\lunderlying_asset_code: string *\lunderlying_asset_name: string *\lcontract_size: decimal *\lstrike_price: decimal\loption_type: enum\lcontract_unit: string *\llisting_date: date *\lexpiry_date: date *\ldelivery_month: string\lsettlement_method: enum *\lmargin_rate: decimal *\lexchange: enum *\lstatus: enum *\l}"];
+
+  // Table: fund
+  fund [label="{<table>表名: fund|基金信息表}|{🔑 fund_id: id *\lfund_code: string *\lfund_name: string *\lfund_type: enum *\lfund_manager: string *\l🔗 fund_manager_id: id *\lcustodian: string *\lnet_value: decimal *\laccumulated_net_value: decimal *\lfund_size: amount *\lestablishment_date: date *\lmanagement_fee_rate: decimal *\lcustodian_fee_rate: decimal *\lsubscription_rate: decimal *\lredemption_rate: decimal *\lrisk_level: enum *\lstatus: enum *\l}"];
+
+  // Relationships
+  account -> customer [label="customer_id", arrowhead=crow];
+  bond -> customer [label="issuer_id", arrowhead=crow];
+  fund -> customer [label="fund_manager_id", arrowhead=crow];
+}

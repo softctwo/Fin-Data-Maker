@@ -1,0 +1,92 @@
+erDiagram
+
+  account {
+    id account_id PK
+    id customer_id FK
+    bank_card account_no PK
+    enum account_type
+    enum currency
+    amount balance
+    amount available_balance
+    date open_date
+    string branch_code
+    enum status
+  }
+
+  bond {
+    id bond_id PK
+    id issuer_id FK
+    string bond_code PK
+    string bond_name
+    enum bond_type
+    amount face_value
+    decimal coupon_rate
+    amount issue_price
+    amount issue_amount
+    date issue_date
+    date maturity_date
+    enum payment_frequency
+    enum credit_rating
+    date listing_date
+    enum status
+  }
+
+  customer {
+    id customer_id PK
+    string customer_name
+    id_card id_card_no PK
+    enum gender
+    date birth_date
+    phone phone
+    email email
+    string address
+    enum customer_type
+    enum customer_level
+    date registration_date
+    enum status
+  }
+
+  derivative {
+    id derivative_id PK
+    string contract_code PK
+    string contract_name
+    enum derivative_type
+    enum underlying_asset_type
+    string underlying_asset_code
+    string underlying_asset_name
+    decimal contract_size
+    decimal strike_price
+    enum option_type
+    string contract_unit
+    date listing_date
+    date expiry_date
+    string delivery_month
+    enum settlement_method
+    decimal margin_rate
+    enum exchange
+    enum status
+  }
+
+  fund {
+    id fund_id PK
+    string fund_code PK
+    string fund_name
+    enum fund_type
+    string fund_manager
+    id fund_manager_id FK
+    string custodian
+    decimal net_value
+    decimal accumulated_net_value
+    amount fund_size
+    date establishment_date
+    decimal management_fee_rate
+    decimal custodian_fee_rate
+    decimal subscription_rate
+    decimal redemption_rate
+    enum risk_level
+    enum status
+  }
+
+  customer ||--o{ account : "customer_id"
+  customer ||--o{ bond : "issuer_id"
+  customer ||--o{ fund : "fund_manager_id"
