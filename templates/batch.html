@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>批量处理 - Fin-Data-Maker</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .task-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .status-badge {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        .status-pending { background-color: #ffc107; color: #000; }
+        .status-running { background-color: #17a2b8; color: #fff; }
+        .status-completed { background-color: #28a745; color: #fff; }
+        .status-failed { background-color: #dc3545; color: #fff; }
+        .status-cancelled { background-color: #6c757d; color: #fff; }
+        .progress-wrapper {
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-database-fill-gear"></i> Fin-Data-Maker
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">数据生成</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/dashboard">数据仪表板</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/batch">批量处理</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/tasks">定时任务</a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/auth/logout">
+                            <i class="bi bi-box-arrow-right"></i> 登出
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-layers-fill"></i> 批量处理管理</h2>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createBatchModal">
+                <i class="bi bi-plus-circle"></i> 创建批量任务
+            </button>
+        </div>
+
+        <!-- 批量任务列表 -->
+        <div id="batchTaskList">
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">加载中...</span>
+                </div>
+                <p class="mt-2 text-muted">加载批量任务列表...</p>
+            </div>
+        </div>
+
+        <!-- 分页 -->
+        <nav id="paginationNav" class="mt-4" style="display: none;">
+            <ul class="pagination justify-content-center" id="pagination">
+            </ul>
+        </nav>
+    </div>
+
+    <!-- 创建批量任务模态框 -->
+    <div class="modal fade" id="createBatchModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">创建批量任务</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="createBatchForm">
+                        <div class="mb-3">
+                            <label class="form-label">任务名称 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="batchName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">任务描述</label>
+                            <textarea class="form-control" id="batchDescription" rows="2"></textarea>
+                        </div>
+
+                        <h6 class="mb-3">数据库配置</h6>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">数据库类型 <span class="text-danger">*</span></label>
+                                <select class="form-select" id="dbType" required>
+                                    <option value="mysql">MySQL</option>
+                                    <option value="postgresql">PostgreSQL</option>
+                                    <option value="oracle">Oracle</option>
+                                    <option value="sqlserver">SQL Server</option>
+                                    <option value="sqlite">SQLite</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">主机地址 <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="dbHost" value="localhost" required>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">端口 <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" id="dbPort" value="3306" required>
+                            </div>
+                            <div class="col-md-8 mb-3">
+                                <label class="form-label">数据库名 <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="dbDatabase" required>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">用户名 <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="dbUsername" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">密码 <span class="text-danger">*</span></label>
+                                <input type="password" class="form-control" id="dbPassword" required>
+                            </div>
+                        </div>
+
+                        <h6 class="mb-3">表选择</h6>
+                        <div class="mb-3">
+                            <label class="form-label">表名列表 <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="tables" rows="3"
+                                placeholder="输入表名，每行一个，例如:&#10;customers&#10;orders&#10;products" required></textarea>
+                            <div class="form-text">每行输入一个表名</div>
+                        </div>
+
+                        <h6 class="mb-3">生成配置</h6>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">生成数量</label>
+                                <input type="number" class="form-control" id="genCount" value="1000" min="1">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">随机种子</label>
+                                <input type="number" class="form-control" id="genSeed" placeholder="可选">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">选项</label>
+                                <div class="form-check mt-2">
+                                    <input class="form-check-input" type="checkbox" id="genValidate" checked>
+                                    <label class="form-check-label" for="genValidate">
+                                        启用数据验证
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="createError" class="alert alert-danger d-none"></div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" id="submitBatchBtn">
+                        <i class="bi bi-check-circle"></i> 创建任务
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 任务详情模态框 -->
+    <div class="modal fade" id="taskDetailModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">任务详情</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="taskDetailContent">
+                    <!-- 动态内容 -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentPage = 1;
+        const perPage = 10;
+        let autoRefreshInterval = null;
+
+        // 加载批量任务列表
+        async function loadBatchTasks(page = 1) {
+            try {
+                const response = await fetch(`/api/batch/list?page=${page}&per_page=${perPage}`);
+                const result = await response.json();
+
+                if (!result.success) {
+                    throw new Error(result.message);
+                }
+
+                currentPage = page;
+                renderBatchTasks(result.data);
+                renderPagination(result.total, page);
+
+            } catch (error) {
+                document.getElementById('batchTaskList').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-circle"></i> 加载失败: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // 渲染批量任务列表
+        function renderBatchTasks(tasks) {
+            const container = document.getElementById('batchTaskList');
+
+            if (tasks.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-5">
+                        <i class="bi bi-inbox" style="font-size: 4rem; color: #ccc;"></i>
+                        <p class="text-muted mt-3">暂无批量任务</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = tasks.map(task => `
+                <div class="task-card">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <h5>
+                                ${task.name}
+                                <span class="status-badge status-${task.status}">${getStatusText(task.status)}</span>
+                            </h5>
+                            <p class="text-muted mb-2">${task.description || '无描述'}</p>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <small class="text-muted">
+                                        <i class="bi bi-layers"></i> 总表数: ${task.total_tables}
+                                    </small>
+                                </div>
+                                <div class="col-md-4">
+                                    <small class="text-muted">
+                                        <i class="bi bi-check-circle"></i> 已完成: ${task.completed_tables}
+                                    </small>
+                                </div>
+                                <div class="col-md-4">
+                                    <small class="text-muted">
+                                        <i class="bi bi-x-circle"></i> 失败: ${task.failed_tables}
+                                    </small>
+                                </div>
+                            </div>
+                            ${task.status === 'running' || task.status === 'pending' ? `
+                                <div class="progress-wrapper">
+                                    <div class="progress">
+                                        <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                             style="width: ${task.progress}%">
+                                            ${task.progress}%
+                                        </div>
+                                    </div>
+                                </div>
+                            ` : ''}
+                            <small class="text-muted">
+                                <i class="bi bi-clock"></i> 创建时间: ${formatDate(task.created_at)}
+                            </small>
+                        </div>
+                        <div class="btn-group-vertical">
+                            <button class="btn btn-sm btn-outline-primary" onclick="viewTaskDetail(${task.id})">
+                                <i class="bi bi-eye"></i> 详情
+                            </button>
+                            ${task.status === 'running' || task.status === 'pending' ? `
+                                <button class="btn btn-sm btn-outline-warning" onclick="cancelTask(${task.id})">
+                                    <i class="bi bi-stop-circle"></i> 取消
+                                </button>
+                            ` : ''}
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteTask(${task.id})">
+                                <i class="bi bi-trash"></i> 删除
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 查看任务详情
+        async function viewTaskDetail(taskId) {
+            try {
+                const response = await fetch(`/api/batch/status/${taskId}`);
+                const result = await response.json();
+
+                if (!result.success) {
+                    throw new Error(result.message);
+                }
+
+                const task = result.data;
+                const results = task.results || {};
+
+                document.getElementById('taskDetailContent').innerHTML = `
+                    <h6>基本信息</h6>
+                    <table class="table table-sm">
+                        <tr><td>任务名称</td><td>${task.name}</td></tr>
+                        <tr><td>状态</td><td><span class="status-badge status-${task.status}">${getStatusText(task.status)}</span></td></tr>
+                        <tr><td>总表数</td><td>${task.total_tables}</td></tr>
+                        <tr><td>已完成</td><td>${task.completed_tables}</td></tr>
+                        <tr><td>失败</td><td>${task.failed_tables}</td></tr>
+                        <tr><td>进度</td><td>${task.progress}%</td></tr>
+                    </table>
+
+                    <h6 class="mt-3">表处理详情</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped">
+                            <thead>
+                                <tr>
+                                    <th>表名</th>
+                                    <th>状态</th>
+                                    <th>记录数</th>
+                                    <th>详情</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${Object.entries(results).map(([tableName, result]) => `
+                                    <tr>
+                                        <td>${tableName}</td>
+                                        <td><span class="badge bg-${result.status === 'success' ? 'success' : result.status === 'failed' ? 'danger' : 'secondary'}">${result.status}</span></td>
+                                        <td>${result.record_count || '-'}</td>
+                                        <td>
+                                            ${result.error ? `<small class="text-danger">${result.error}</small>` :
+                                              result.validation_report ? `<small class="text-success">有效行: ${result.validation_report.valid_rows}</small>` : '-'}
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+
+                new bootstrap.Modal(document.getElementById('taskDetailModal')).show();
+
+            } catch (error) {
+                alert('加载详情失败: ' + error.message);
+            }
+        }
+
+        // 取消任务
+        async function cancelTask(taskId) {
+            if (!confirm('确定要取消此任务吗？')) return;
+
+            try {
+                const response = await fetch(`/api/batch/cancel/${taskId}`, { method: 'POST' });
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('任务已取消');
+                    loadBatchTasks(currentPage);
+                } else {
+                    throw new Error(result.message);
+                }
+            } catch (error) {
+                alert('取消失败: ' + error.message);
+            }
+        }
+
+        // 删除任务
+        async function deleteTask(taskId) {
+            if (!confirm('确定要删除此任务吗？')) return;
+
+            try {
+                const response = await fetch(`/api/batch/delete/${taskId}`, { method: 'DELETE' });
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('任务已删除');
+                    loadBatchTasks(currentPage);
+                } else {
+                    throw new Error(result.message);
+                }
+            } catch (error) {
+                alert('删除失败: ' + error.message);
+            }
+        }
+
+        // 提交创建任务
+        document.getElementById('submitBatchBtn').addEventListener('click', async () => {
+            const errorDiv = document.getElementById('createError');
+            errorDiv.classList.add('d-none');
+
+            try {
+                const tables = document.getElementById('tables').value
+                    .split('\n')
+                    .map(t => t.trim())
+                    .filter(t => t.length > 0);
+
+                if (tables.length === 0) {
+                    throw new Error('请至少输入一个表名');
+                }
+
+                const data = {
+                    name: document.getElementById('batchName').value,
+                    description: document.getElementById('batchDescription').value,
+                    db_config: {
+                        type: document.getElementById('dbType').value,
+                        host: document.getElementById('dbHost').value,
+                        port: parseInt(document.getElementById('dbPort').value),
+                        database: document.getElementById('dbDatabase').value,
+                        username: document.getElementById('dbUsername').value,
+                        password: document.getElementById('dbPassword').value
+                    },
+                    tables: tables,
+                    generation_config: {
+                        count: parseInt(document.getElementById('genCount').value),
+                        validate: document.getElementById('genValidate').checked
+                    }
+                };
+
+                const seed = document.getElementById('genSeed').value;
+                if (seed) {
+                    data.generation_config.seed = parseInt(seed);
+                }
+
+                const response = await fetch('/api/batch/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    bootstrap.Modal.getInstance(document.getElementById('createBatchModal')).hide();
+                    document.getElementById('createBatchForm').reset();
+                    alert('批量任务已创建并开始执行');
+                    loadBatchTasks(1);
+                } else {
+                    throw new Error(result.message);
+                }
+
+            } catch (error) {
+                errorDiv.textContent = error.message;
+                errorDiv.classList.remove('d-none');
+            }
+        });
+
+        // 渲染分页
+        function renderPagination(total, current) {
+            const totalPages = Math.ceil(total / perPage);
+
+            if (totalPages <= 1) {
+                document.getElementById('paginationNav').style.display = 'none';
+                return;
+            }
+
+            document.getElementById('paginationNav').style.display = 'block';
+            const pagination = document.getElementById('pagination');
+
+            let html = '';
+            for (let i = 1; i <= totalPages; i++) {
+                html += `
+                    <li class="page-item ${i === current ? 'active' : ''}">
+                        <a class="page-link" href="#" onclick="loadBatchTasks(${i}); return false;">${i}</a>
+                    </li>
+                `;
+            }
+            pagination.innerHTML = html;
+        }
+
+        // 工具函数
+        function getStatusText(status) {
+            const statusMap = {
+                pending: '等待中',
+                running: '运行中',
+                completed: '已完成',
+                failed: '失败',
+                cancelled: '已取消'
+            };
+            return statusMap[status] || status;
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            return new Date(dateStr).toLocaleString('zh-CN');
+        }
+
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            loadBatchTasks(1);
+
+            // 自动刷新运行中的任务
+            autoRefreshInterval = setInterval(() => {
+                loadBatchTasks(currentPage);
+            }, 5000); // 每5秒刷新一次
+        });
+
+        // 页面卸载时清除定时器
+        window.addEventListener('beforeunload', () => {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+            }
+        });
+    </script>
+</body>
+</html>

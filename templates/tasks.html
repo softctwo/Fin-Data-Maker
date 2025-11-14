@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>定时任务管理 - Fin-Data-Maker</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .navbar-brand {
+            font-weight: bold;
+        }
+        .task-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status-badge {
+            font-size: 0.85rem;
+            padding: 0.35em 0.65em;
+        }
+        .action-btn {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+        }
+        .time-info {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+        .schedule-badge {
+            background-color: #e7f3ff;
+            color: #0066cc;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-database-fill-gear"></i> Fin-Data-Maker
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">数据生成</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/dashboard">数据仪表板</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/batch">批量处理</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/tasks">定时任务</a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/auth/logout">
+                            <i class="bi bi-box-arrow-right"></i> 登出
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>
+                <i class="bi bi-clock-history"></i> 定时任务管理
+            </h2>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createTaskModal">
+                <i class="bi bi-plus-circle"></i> 创建定时任务
+            </button>
+        </div>
+
+        <!-- 任务列表 -->
+        <div id="taskList"></div>
+
+        <!-- 分页 -->
+        <nav aria-label="任务分页">
+            <ul class="pagination justify-content-center" id="pagination"></ul>
+        </nav>
+    </div>
+
+    <!-- 创建任务模态框 -->
+    <div class="modal fade" id="createTaskModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-plus-circle"></i> 创建定时任务
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="createTaskForm">
+                        <!-- 基本信息 -->
+                        <div class="mb-3">
+                            <label class="form-label">任务名称 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="taskName" required
+                                   placeholder="例如: 每日客户数据生成">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">任务描述</label>
+                            <textarea class="form-control" id="taskDescription" rows="2"
+                                      placeholder="简要描述任务用途"></textarea>
+                        </div>
+
+                        <!-- 配置选择 -->
+                        <div class="mb-3">
+                            <label class="form-label">数据源配置 <span class="text-danger">*</span></label>
+                            <select class="form-select" id="configSelect" required>
+                                <option value="">-- 请选择配置 --</option>
+                            </select>
+                            <div class="form-text">请先在主页保存数据源配置</div>
+                        </div>
+
+                        <!-- 表选择 -->
+                        <div class="mb-3" id="tableSelectGroup" style="display: none;">
+                            <label class="form-label">目标表 <span class="text-danger">*</span></label>
+                            <select class="form-select" id="taskTableSelect" required disabled>
+                                <option value="">-- 请先选择配置 --</option>
+                            </select>
+                        </div>
+
+                        <!-- 调度配置 -->
+                        <div class="mb-3">
+                            <label class="form-label">调度类型 <span class="text-danger">*</span></label>
+                            <select class="form-select" id="scheduleType" required>
+                                <option value="once">仅执行一次</option>
+                                <option value="daily">每日执行</option>
+                                <option value="weekly">每周执行</option>
+                                <option value="monthly">每月执行</option>
+                            </select>
+                        </div>
+
+                        <!-- 调度时间 -->
+                        <div id="scheduleTimeGroup">
+                            <!-- 一次性任务 -->
+                            <div id="onceSchedule" class="mb-3">
+                                <label class="form-label">执行时间</label>
+                                <input type="datetime-local" class="form-control" id="onceTime">
+                            </div>
+
+                            <!-- 每日任务 -->
+                            <div id="dailySchedule" class="mb-3" style="display: none;">
+                                <label class="form-label">执行时间（每日）</label>
+                                <input type="time" class="form-control" id="dailyTime" value="00:00">
+                            </div>
+
+                            <!-- 每周任务 -->
+                            <div id="weeklySchedule" style="display: none;">
+                                <div class="mb-3">
+                                    <label class="form-label">星期几</label>
+                                    <select class="form-select" id="weekDay">
+                                        <option value="0">星期一</option>
+                                        <option value="1">星期二</option>
+                                        <option value="2">星期三</option>
+                                        <option value="3">星期四</option>
+                                        <option value="4">星期五</option>
+                                        <option value="5">星期六</option>
+                                        <option value="6">星期日</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">执行时间</label>
+                                    <input type="time" class="form-control" id="weeklyTime" value="00:00">
+                                </div>
+                            </div>
+
+                            <!-- 每月任务 -->
+                            <div id="monthlySchedule" style="display: none;">
+                                <div class="mb-3">
+                                    <label class="form-label">日期</label>
+                                    <select class="form-select" id="monthDay">
+                                        <option value="1">1日</option>
+                                        <option value="2">2日</option>
+                                        <option value="3">3日</option>
+                                        <option value="4">4日</option>
+                                        <option value="5">5日</option>
+                                        <option value="6">6日</option>
+                                        <option value="7">7日</option>
+                                        <option value="8">8日</option>
+                                        <option value="9">9日</option>
+                                        <option value="10">10日</option>
+                                        <option value="11">11日</option>
+                                        <option value="12">12日</option>
+                                        <option value="13">13日</option>
+                                        <option value="14">14日</option>
+                                        <option value="15">15日</option>
+                                        <option value="16">16日</option>
+                                        <option value="17">17日</option>
+                                        <option value="18">18日</option>
+                                        <option value="19">19日</option>
+                                        <option value="20">20日</option>
+                                        <option value="21">21日</option>
+                                        <option value="22">22日</option>
+                                        <option value="23">23日</option>
+                                        <option value="24">24日</option>
+                                        <option value="25">25日</option>
+                                        <option value="26">26日</option>
+                                        <option value="27">27日</option>
+                                        <option value="28">28日</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">执行时间</label>
+                                    <input type="time" class="form-control" id="monthlyTime" value="00:00">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 生成参数 -->
+                        <div class="mb-3">
+                            <label class="form-label">生成行数</label>
+                            <input type="number" class="form-control" id="taskRowCount"
+                                   value="100" min="1" max="100000">
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="taskValidate" checked>
+                                <label class="form-check-label" for="taskValidate">
+                                    启用数据质量验证
+                                </label>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" id="createTaskBtn">
+                        <i class="bi bi-check-circle"></i> 创建任务
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 任务详情模态框 -->
+    <div class="modal fade" id="taskDetailModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-info-circle"></i> 任务详情
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="taskDetailContent">
+                    <!-- 动态加载 -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentPage = 1;
+        const perPage = 10;
+        let autoRefreshInterval = null;
+
+        // 加载配置列表
+        async function loadConfigs() {
+            try {
+                const response = await fetch('/api/configs/list');
+                const result = await response.json();
+
+                if (result.success) {
+                    const select = document.getElementById('configSelect');
+                    select.innerHTML = '<option value="">-- 请选择配置 --</option>';
+
+                    result.data.forEach(config => {
+                        const option = document.createElement('option');
+                        option.value = config.id;
+                        option.textContent = config.name;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('加载配置列表失败:', error);
+            }
+        }
+
+        // 当选择配置后，加载表列表
+        document.getElementById('configSelect').addEventListener('change', async (e) => {
+            const configId = e.target.value;
+            const tableSelectGroup = document.getElementById('tableSelectGroup');
+            const tableSelect = document.getElementById('taskTableSelect');
+
+            if (!configId) {
+                tableSelectGroup.style.display = 'none';
+                tableSelect.disabled = true;
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/configs/${configId}`);
+                const result = await response.json();
+
+                if (result.success && result.data.metadata) {
+                    const metadata = JSON.parse(result.data.metadata);
+                    tableSelect.innerHTML = '<option value="">-- 请选择表 --</option>';
+
+                    metadata.tables.forEach(table => {
+                        const option = document.createElement('option');
+                        option.value = table;
+                        option.textContent = table;
+                        tableSelect.appendChild(option);
+                    });
+
+                    tableSelect.disabled = false;
+                    tableSelectGroup.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('加载表列表失败:', error);
+                alert('加载表列表失败: ' + error.message);
+            }
+        });
+
+        // 调度类型切换
+        document.getElementById('scheduleType').addEventListener('change', (e) => {
+            const type = e.target.value;
+
+            document.getElementById('onceSchedule').style.display = 'none';
+            document.getElementById('dailySchedule').style.display = 'none';
+            document.getElementById('weeklySchedule').style.display = 'none';
+            document.getElementById('monthlySchedule').style.display = 'none';
+
+            if (type === 'once') {
+                document.getElementById('onceSchedule').style.display = 'block';
+            } else if (type === 'daily') {
+                document.getElementById('dailySchedule').style.display = 'block';
+            } else if (type === 'weekly') {
+                document.getElementById('weeklySchedule').style.display = 'block';
+            } else if (type === 'monthly') {
+                document.getElementById('monthlySchedule').style.display = 'block';
+            }
+        });
+
+        // 创建任务
+        document.getElementById('createTaskBtn').addEventListener('click', async () => {
+            const name = document.getElementById('taskName').value.trim();
+            const description = document.getElementById('taskDescription').value.trim();
+            const configId = document.getElementById('configSelect').value;
+            const tableName = document.getElementById('taskTableSelect').value;
+            const scheduleType = document.getElementById('scheduleType').value;
+            const rowCount = parseInt(document.getElementById('taskRowCount').value);
+            const validate = document.getElementById('taskValidate').checked;
+
+            if (!name) {
+                alert('请输入任务名称');
+                return;
+            }
+
+            if (!configId) {
+                alert('请选择配置');
+                return;
+            }
+
+            if (!tableName) {
+                alert('请选择表');
+                return;
+            }
+
+            // 生成时间表达式
+            let timeExpression = '';
+            if (scheduleType === 'once') {
+                const onceTime = document.getElementById('onceTime').value;
+                if (!onceTime) {
+                    alert('请选择执行时间');
+                    return;
+                }
+                timeExpression = onceTime;
+            } else if (scheduleType === 'daily') {
+                timeExpression = document.getElementById('dailyTime').value;
+            } else if (scheduleType === 'weekly') {
+                const weekDay = document.getElementById('weekDay').value;
+                const weeklyTime = document.getElementById('weeklyTime').value;
+                timeExpression = `${weekDay}:${weeklyTime}`;
+            } else if (scheduleType === 'monthly') {
+                const monthDay = document.getElementById('monthDay').value;
+                const monthlyTime = document.getElementById('monthlyTime').value;
+                timeExpression = `${monthDay}:${monthlyTime}`;
+            }
+
+            if (!timeExpression) {
+                alert('请配置调度时间');
+                return;
+            }
+
+            const taskData = {
+                name: name,
+                description: description,
+                config_id: parseInt(configId),
+                table_name: tableName,
+                schedule_type: scheduleType,
+                time_expression: timeExpression,
+                generation_config: {
+                    count: rowCount,
+                    validate: validate
+                }
+            };
+
+            try {
+                const response = await fetch('/api/tasks/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(taskData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('任务创建成功！');
+                    bootstrap.Modal.getInstance(document.getElementById('createTaskModal')).hide();
+                    document.getElementById('createTaskForm').reset();
+                    loadTasks(1);
+                } else {
+                    alert('创建失败: ' + result.message);
+                }
+            } catch (error) {
+                console.error('创建任务失败:', error);
+                alert('创建失败: ' + error.message);
+            }
+        });
+
+        // 加载任务列表
+        async function loadTasks(page = 1) {
+            try {
+                const response = await fetch(`/api/tasks/list?page=${page}&per_page=${perPage}`);
+                const result = await response.json();
+
+                if (!result.success) {
+                    console.error('加载任务列表失败:', result.message);
+                    return;
+                }
+
+                currentPage = page;
+                renderTasks(result.data);
+                renderPagination(result.total, page);
+            } catch (error) {
+                console.error('加载任务列表失败:', error);
+            }
+        }
+
+        // 渲染任务列表
+        function renderTasks(tasks) {
+            const container = document.getElementById('taskList');
+
+            if (tasks.length === 0) {
+                container.innerHTML = `
+                    <div class="task-card text-center text-muted">
+                        <i class="bi bi-inbox" style="font-size: 3rem;"></i>
+                        <p class="mt-3">暂无定时任务</p>
+                        <p>点击右上角"创建定时任务"开始使用</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = tasks.map(task => {
+                const statusClass = {
+                    'active': 'success',
+                    'paused': 'warning',
+                    'completed': 'info',
+                    'failed': 'danger'
+                }[task.status] || 'secondary';
+
+                const statusText = {
+                    'active': '活动',
+                    'paused': '已暂停',
+                    'completed': '已完成',
+                    'failed': '失败'
+                }[task.status] || task.status;
+
+                const scheduleTypeText = {
+                    'once': '一次性',
+                    'daily': '每日',
+                    'weekly': '每周',
+                    'monthly': '每月'
+                }[task.schedule_type] || task.schedule_type;
+
+                return `
+                    <div class="task-card">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <h5 class="mb-2">
+                                    ${task.name}
+                                    <span class="badge bg-${statusClass} status-badge ms-2">${statusText}</span>
+                                    <span class="schedule-badge ms-2">${scheduleTypeText}</span>
+                                </h5>
+                                ${task.description ? `<p class="text-muted mb-2">${task.description}</p>` : ''}
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <small class="time-info">
+                                            <i class="bi bi-table"></i> ${task.table_name}
+                                        </small>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <small class="time-info">
+                                            <i class="bi bi-clock"></i> 下次执行: ${task.next_run || '未安排'}
+                                        </small>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <small class="time-info">
+                                            <i class="bi bi-calendar-check"></i> 上次执行: ${task.last_run || '未执行'}
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="ms-3">
+                                <div class="btn-group-vertical">
+                                    <button class="btn btn-sm btn-outline-info action-btn" onclick="viewTaskDetail(${task.id})">
+                                        <i class="bi bi-eye"></i> 详情
+                                    </button>
+                                    ${task.status === 'active' ? `
+                                        <button class="btn btn-sm btn-outline-warning action-btn" onclick="pauseTask(${task.id})">
+                                            <i class="bi bi-pause-circle"></i> 暂停
+                                        </button>
+                                    ` : ''}
+                                    ${task.status === 'paused' ? `
+                                        <button class="btn btn-sm btn-outline-success action-btn" onclick="resumeTask(${task.id})">
+                                            <i class="bi bi-play-circle"></i> 恢复
+                                        </button>
+                                    ` : ''}
+                                    <button class="btn btn-sm btn-outline-danger action-btn" onclick="deleteTask(${task.id})">
+                                        <i class="bi bi-trash"></i> 删除
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 渲染分页
+        function renderPagination(total, current) {
+            const totalPages = Math.ceil(total / perPage);
+            const container = document.getElementById('pagination');
+
+            if (totalPages <= 1) {
+                container.innerHTML = '';
+                return;
+            }
+
+            let html = '';
+
+            // 上一页
+            html += `
+                <li class="page-item ${current === 1 ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="loadTasks(${current - 1}); return false;">上一页</a>
+                </li>
+            `;
+
+            // 页码
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === 1 || i === totalPages || (i >= current - 2 && i <= current + 2)) {
+                    html += `
+                        <li class="page-item ${i === current ? 'active' : ''}">
+                            <a class="page-link" href="#" onclick="loadTasks(${i}); return false;">${i}</a>
+                        </li>
+                    `;
+                } else if (i === current - 3 || i === current + 3) {
+                    html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                }
+            }
+
+            // 下一页
+            html += `
+                <li class="page-item ${current === totalPages ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="loadTasks(${current + 1}); return false;">下一页</a>
+                </li>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        // 查看任务详情
+        async function viewTaskDetail(taskId) {
+            try {
+                const response = await fetch(`/api/tasks/${taskId}`);
+                const result = await response.json();
+
+                if (!result.success) {
+                    alert('加载任务详情失败: ' + result.message);
+                    return;
+                }
+
+                const task = result.data;
+                const genConfig = task.generation_config || {};
+
+                const content = `
+                    <table class="table">
+                        <tr>
+                            <th width="30%">任务名称</th>
+                            <td>${task.name}</td>
+                        </tr>
+                        <tr>
+                            <th>任务描述</th>
+                            <td>${task.description || '-'}</td>
+                        </tr>
+                        <tr>
+                            <th>目标表</th>
+                            <td>${task.table_name}</td>
+                        </tr>
+                        <tr>
+                            <th>调度类型</th>
+                            <td>${task.schedule_type}</td>
+                        </tr>
+                        <tr>
+                            <th>时间表达式</th>
+                            <td>${task.time_expression}</td>
+                        </tr>
+                        <tr>
+                            <th>状态</th>
+                            <td>${task.status}</td>
+                        </tr>
+                        <tr>
+                            <th>生成行数</th>
+                            <td>${genConfig.count || 100}</td>
+                        </tr>
+                        <tr>
+                            <th>数据验证</th>
+                            <td>${genConfig.validate ? '启用' : '禁用'}</td>
+                        </tr>
+                        <tr>
+                            <th>下次执行</th>
+                            <td>${task.next_run || '未安排'}</td>
+                        </tr>
+                        <tr>
+                            <th>上次执行</th>
+                            <td>${task.last_run || '未执行'}</td>
+                        </tr>
+                        <tr>
+                            <th>创建时间</th>
+                            <td>${task.created_at}</td>
+                        </tr>
+                    </table>
+                `;
+
+                document.getElementById('taskDetailContent').innerHTML = content;
+                new bootstrap.Modal(document.getElementById('taskDetailModal')).show();
+            } catch (error) {
+                console.error('加载任务详情失败:', error);
+                alert('加载失败: ' + error.message);
+            }
+        }
+
+        // 暂停任务
+        async function pauseTask(taskId) {
+            if (!confirm('确定要暂停此任务吗？')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/tasks/${taskId}/pause`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('任务已暂停');
+                    loadTasks(currentPage);
+                } else {
+                    alert('暂停失败: ' + result.message);
+                }
+            } catch (error) {
+                console.error('暂停任务失败:', error);
+                alert('暂停失败: ' + error.message);
+            }
+        }
+
+        // 恢复任务
+        async function resumeTask(taskId) {
+            if (!confirm('确定要恢复此任务吗？')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/tasks/${taskId}/resume`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('任务已恢复');
+                    loadTasks(currentPage);
+                } else {
+                    alert('恢复失败: ' + result.message);
+                }
+            } catch (error) {
+                console.error('恢复任务失败:', error);
+                alert('恢复失败: ' + error.message);
+            }
+        }
+
+        // 删除任务
+        async function deleteTask(taskId) {
+            if (!confirm('确定要删除此任务吗？此操作不可恢复。')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/tasks/${taskId}/delete`, {
+                    method: 'DELETE'
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('任务已删除');
+                    loadTasks(currentPage);
+                } else {
+                    alert('删除失败: ' + result.message);
+                }
+            } catch (error) {
+                console.error('删除任务失败:', error);
+                alert('删除失败: ' + error.message);
+            }
+        }
+
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            loadConfigs();
+            loadTasks(1);
+
+            // 启动自动刷新（每30秒）
+            autoRefreshInterval = setInterval(() => {
+                loadTasks(currentPage);
+            }, 30000);
+        });
+
+        // 页面卸载时清除自动刷新
+        window.addEventListener('beforeunload', () => {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+            }
+        });
+    </script>
+</body>
+</html>

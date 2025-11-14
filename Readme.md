@@ -160,9 +160,16 @@ account_data, _ = app.generate_with_relations(
 ```bash
 # Web界面基础版（推荐）
 python webapp.py
+# 访问 http://localhost:5000
 
-# Web界面专业版（带认证和高级功能）
+# Web界面专业版（带认证和高级功能）✨
 python webapp_pro.py
+# 访问 http://localhost:5000
+# 功能页面：
+#   - /          数据生成（4步向导）
+#   - /dashboard 数据仪表板（可视化图表）
+#   - /batch     批量处理管理
+#   - /tasks     定时任务管理
 
 # 交互式命令行工具
 python cli.py --interactive
@@ -175,6 +182,9 @@ python examples/new_entities_example.py
 
 # 自定义表示例：创建保险单数据
 python examples/custom_table_example.py
+
+# DDL导入示例：从SQL DDL生成数据 🆕
+python examples/ddl_import_example.py
 
 # 生成SQL INSERT语句 🆕
 python tools/generate_sql_inserts.py
@@ -208,6 +218,45 @@ monitor.start(100, 'customer')
 # ... 数据生成过程 ...
 monitor.complete()
 ```
+
+### 专业版功能亮点 ✨
+
+启动 `webapp_pro.py` 后，您可以体验以下企业级功能：
+
+1. **数据生成**（主页）
+   - 4步向导式操作：连接数据库 → 选择表 → 配置参数 → 预览和导出
+   - 支持5种数据库类型（MySQL、PostgreSQL、Oracle、SQL Server、SQLite）
+   - **DDL导入** 🆕：支持从CREATE TABLE语句直接导入表结构
+     - 粘贴SQL DDL即可自动解析表结构
+     - 实时预览解析结果
+     - 支持多表批量导入
+   - 实时数据预览和质量报告
+   - 配置保存和重用
+
+2. **数据仪表板**（/dashboard）
+   - **统计卡片**：展示关键指标（已分析表数、生成记录数、平均质量分等）
+   - **历史趋势图**：7天操作历史折线图
+   - **质量概览图**：最近10次分析的质量柱状图
+   - **完整性分布**：字段完整性饼图
+   - **质量雷达图**：多维度质量评分
+
+3. **批量处理**（/batch）
+   - 一次创建多个表的数据生成任务
+   - 实时进度追踪（进度条和百分比）
+   - 任务管理（查看详情、取消运行中任务、删除任务）
+   - 每个表的处理结果详情
+   - 自动刷新（每5秒）
+
+4. **定时任务**（/tasks）
+   - 创建自动化数据生成任务
+   - 4种调度模式：
+     - 一次性：指定具体执行时间
+     - 每日：每天指定时间执行
+     - 每周：每周指定星期和时间执行
+     - 每月：每月指定日期和时间执行
+   - 任务控制（暂停、恢复、删除）
+   - 显示下次执行和上次执行时间
+   - 执行历史追踪
 
 ## 项目结构
 
@@ -243,10 +292,11 @@ Fin-Data-Maker/
 │   ├── schema.sql         # 数据库表结构定义
 │   ├── test_data.sql      # 测试数据
 │   ├── full_setup.sql     # 完整安装脚本
+│   ├── sample_ddl.sql     # DDL导入示例（电商系统）🆕
 │   └── README.md          # SQL使用说明
-├── docker/                # Docker配置 🆕
+├── docker/                # Docker配置
 │   └── README.md          # Docker使用指南
-├── tools/                 # 工具脚本 🆕
+├── tools/                 # 工具脚本
 │   └── generate_sql_inserts.py  # Python数据转SQL工具
 ├── examples/              # 示例代码
 │   ├── basic_example.py   # 基础示例
@@ -257,7 +307,10 @@ Fin-Data-Maker/
 │   ├── test_new_entities.py  # 新实体测试
 │   └── test_new_features.py  # 新功能测试 🆕
 ├── output/                # 输出目录
-├── docker-compose.yml     # Docker Compose配置 🆕
+├── webapp.py              # Web应用基础版
+├── webapp_pro.py          # Web应用专业版 🆕
+├── cli.py                 # 命令行工具
+├── docker-compose.yml     # Docker Compose配置
 ├── requirements.txt       # 项目依赖
 └── setup.py              # 安装配置
 ```
@@ -532,8 +585,22 @@ class CustomRule(Rule):
 - [ ] 支持增量数据生成
 - [ ] 添加更多数据质量规则
 - [ ] 支持自定义数据生成策略
+
+**可视化增强**：
+- [ ] 数据关系图可视化
+- [ ] 表间关系依赖分析
+- [ ] 生成过程实时监控
+
+**协作功能**：
 - [ ] API令牌认证
 - [ ] 团队协作功能
+- [ ] 权限管理系统
+- [ ] 数据导入功能
+
+**集成和通知**：
+- [ ] Webhook通知
+- [ ] 邮件报告
+- [ ] 更多导出格式支持
 
 ## 许可证
 
