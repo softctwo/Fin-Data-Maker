@@ -151,6 +151,20 @@ def dashboard():
     return render_template('dashboard.html', stats=stats)
 
 
+@app.route('/batch')
+@login_required
+def batch():
+    """批量处理页面"""
+    return render_template('batch.html')
+
+
+@app.route('/tasks')
+@login_required
+def tasks():
+    """定时任务页面"""
+    return render_template('tasks.html')
+
+
 # ============ 配置管理API ============
 
 @app.route('/api/configs', methods=['GET'])

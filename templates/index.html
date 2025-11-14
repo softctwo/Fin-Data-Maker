@@ -164,14 +164,37 @@
 </head>
 <body>
     <!-- 导航栏 -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container-fluid">
             <a class="navbar-brand" href="/">
                 <i class="bi bi-database-fill-gear"></i> Fin-Data-Maker
             </a>
-            <span class="navbar-text text-white">
-                金融数据生成系统
-            </span>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/">数据生成</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/dashboard">数据仪表板</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/batch">批量处理</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/tasks">定时任务</a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/auth/logout">
+                            <i class="bi bi-box-arrow-right"></i> 登出
+                        </a>
+                    </li>
+                </ul>
+            </div>
         </div>
     </nav>
 
